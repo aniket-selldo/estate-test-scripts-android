@@ -1,5 +1,6 @@
 package demo;
 
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import io.appium.java_client.AppiumBy;
@@ -12,5 +13,6 @@ public class tests extends BaseTest {
 		driver.findElement(AppiumBy.id("com.amura.selldo.staging:id/input_email")).sendKeys("aniket.khandizod+h@sell.do");
 		driver.findElement(AppiumBy.id("com.amura.selldo.staging:id/input_password")).sendKeys("amura@123");
 		driver.findElement(AppiumBy.id("com.amura.selldo.staging:id/button_sign_in")).click();
+		Assert.fail();
 	} 
 }

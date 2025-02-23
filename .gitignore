@@ -1,1 +1,13 @@
 /target/
+Random Values/
+/test-output/
+.classpath
+/.settings/
+/reports/
+/ImportJunk/
+/DataFile/
+/Downloads/
+/Extensions/
+/CookieStore/
+/reports.zip
+/TestTrigger.xml
