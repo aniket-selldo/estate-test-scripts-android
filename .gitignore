@@ -11,3 +11,7 @@ Random Values/
 /CookieStore/
 /reports.zip
 /TestTrigger.xml
+/report
+.settings
+/.apt_generated/
+/.apt_generated_tests/

@@ -15,7 +15,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 public class ZipCompress {
-	public static void compress(String dirPath) {
+	
+	static boolean deleteFile = false;
+	public static void compress(String dirPath,String fileName) {
 
 		File file = new File(System.getProperty("user.dir"));
 		for (File fl : file.listFiles()) {
@@ -23,16 +25,15 @@ public class ZipCompress {
 					|| fl.getName().endsWith(".zip")) {
 				System.out.println(ConsoleColors.RED_BOLD_BRIGHT + "Zip File Deleted >> "
 						+ ConsoleColors.PURPLE_BOLD_BRIGHT + fl.getName() + ConsoleColors.RESET);
-				if (System.getProperty("user.name").equalsIgnoreCase("aniket")) {
+				if (System.getProperty("user.name").equalsIgnoreCase("aniket") && deleteFile) {
 					fl.deleteOnExit();
 				}
 			}
 		}
 
 		final Path sourceDir = Paths.get(dirPath);
-		String TodaysDate = new SimpleDateFormat("dd_MM_YYYY hh-mm-ss a").format(new Date().getTime());
-		TodaysDate = ""; // Remove this line if you want date and time with report zip
-		String zipFileName = dirPath + "" + TodaysDate.concat(".zip");
+		//String TodaysDate = new SimpleDateFormat("dd_MM_YYYY hh-mm-ss a").format(new Date().getTime());
+		String zipFileName = System.getProperty("user.dir")+File.separator+"Zip"+File.separator+fileName.concat(".zip");
 		try {
 			final ZipOutputStream outputStream = new ZipOutputStream(new FileOutputStream(zipFileName));
 			Files.walkFileTree(sourceDir, new SimpleFileVisitor<Path>() {

@@ -1,5 +1,6 @@
 package utility;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
@@ -13,35 +14,13 @@ public class ExtentReporterNG {
 	public static ExtentReports getReportObject() {
 		Properties prop = new Properties();
 		try {
-			prop.load(new FileInputStream(System.getProperty("user.dir") + "/config.properties"));
+			prop.load(new FileInputStream(System.getProperty("user.dir") + File.separator+"config.properties"));
 		} catch (IOException e) {}
 
 		// -----------------------------------------------------------------------------
-		String path = System.getProperty("user.dir") + "//reports//AutomationReport.html";
+		String path = System.getProperty("user.dir") + File.separator+"reports"+File.separator+"AutomationReport.html";
 		ExtentSparkReporter reporter = new ExtentSparkReporter(path);
-		reporter.config().setReportName("Sell.do Web login test Results");
-		reporter.config().setDocumentTitle("Sell.do Automation Report");
-		reporter.config().setTheme(Theme.DARK);
-
-		ExtentReports extent = new ExtentReports();
-		extent.attachReporter(reporter);
-		extent.setSystemInfo("Tester","Aniket Khandizod");
-		extent.setSystemInfo("System User",System.getProperty("user.name").toUpperCase());
-		extent.setSystemInfo("Email", prop.getProperty("Email"));
-		extent.setSystemInfo("OS", System.getProperty("os.name"));
-		extent.setSystemInfo("Environment", prop.getProperty("URL"));
-		return extent;
-	}
-	public static ExtentReports getReportObjectPass() {
-		Properties prop = new Properties();
-		try {
-			prop.load(new FileInputStream(System.getProperty("user.dir") + "/config.properties"));
-		} catch (IOException e) {}
-
-		// -----------------------------------------------------------------------------
-		String path = System.getProperty("user.dir") + "//reports//AutomationPassReport.html";
-		ExtentSparkReporter reporter = new ExtentSparkReporter(path);
-		reporter.config().setReportName("Sell.do Web login test Results");
+		reporter.config().setReportName("Sell.do Web test Results");
 		reporter.config().setDocumentTitle("Sell.do Automation Report");
 		reporter.config().setTheme(Theme.DARK);
 

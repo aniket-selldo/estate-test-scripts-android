@@ -7,14 +7,13 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
 
-import org.apache.commons.configuration2.Configuration;
-import org.apache.commons.configuration2.builder.fluent.Configurations;
-import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.io.FileUtils;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
+import org.testng.annotations.AfterSuite;
 import org.testng.annotations.AfterTest;
+import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.BeforeTest;
 
 import io.appium.java_client.android.AndroidDriver;
@@ -26,26 +25,32 @@ public class BaseTest {
 
 	protected AndroidDriver driver;
 	protected AppiumDriverLocalService service;
+	private static UiAutomator2Options options;
+	private static final File mainJsPath = new File(
+			System.getProperty("user.home") + "/AppData/Roaming/npm/node_modules/appium/build/lib/main.js");
+	private static final String apkFilePath = System.getProperty("user.dir")
+			+ "/resources/ESTATE-16655-DEV-debug-260-7.9.apk";
+	private static final String IPAdress = "127.0.0.1";
+	private static final int port = 4723;
+	private static final String virtualDeviceName = "AndroidPhone";
+	private static final boolean triggerServer = false;
 
-	@BeforeTest(alwaysRun = true)
-	public void TriggerConfiguration() throws MalformedURLException, URISyntaxException {
-
-		File mainJsPath = new File(
-				System.getProperty("user.home") + "/AppData/Roaming/npm/node_modules/appium/build/lib/main.js");
-		String apkFilePath = System.getProperty("user.dir") + "/resources/ESTATE-16655-DEV-debug-260-7.9.apk";
-		String IPAdress = "127.0.0.1";
-		int port = 4723;
-		String virtualDeviceName = "Pixel 8 Pro API 35";
-
-		// Trigger Server
-		service = new AppiumServiceBuilder().withAppiumJS(mainJsPath).withIPAddress(IPAdress).usingPort(port).build();
-		service.start();
-
+	@BeforeSuite(alwaysRun = true)
+	public void serverSetup() {
+		if(triggerServer){
+			// Trigger Server
+			service = new AppiumServiceBuilder().withAppiumJS(mainJsPath).withIPAddress(IPAdress).usingPort(port).build();
+			service.start();
+		}
 		// Configurations
-		UiAutomator2Options options = new UiAutomator2Options();
+		options = new UiAutomator2Options();
 		options.setDeviceName(virtualDeviceName);
 		options.setApp(apkFilePath);
 		options.setCapability("autoGrantPermissions", true);
+	}
+
+	@BeforeTest(alwaysRun = true)
+	public void TriggerConfiguration() throws MalformedURLException, URISyntaxException {
 
 		// Trigger Driver
 		driver = new AndroidDriver(new URI("http://" + IPAdress + ":" + port).toURL(), options);
@@ -55,34 +60,28 @@ public class BaseTest {
 
 	}
 
-	@AfterTest
+	@AfterTest(alwaysRun = true)
 	public void KillConfiguration() {
 		driver.quit();
-		service.stop();
 	}
 
-	public Configuration prop() {
-		Configurations configs = new Configurations();
-		Configuration config = null;
-		try {
-			config = configs.properties(new File(System.getProperty("user.dir") + "/demo.properties"));
-		} catch (ConfigurationException e) {
-			System.out.println(ConsoleColors.RED_BOLD_BRIGHT + "Issue in Global properties" + ConsoleColors.RESET);
-			e.printStackTrace();
+	@AfterSuite(alwaysRun = true)
+	public void serverKill() {
+		if(triggerServer){
+			service.stop();
 		}
-
-		return config;
 	}
 
 	public String getScreenshot(String fileName, WebDriver driver) {
 		TakesScreenshot ts = (TakesScreenshot) driver;
 		File file = ts.getScreenshotAs(OutputType.FILE);
-		File filee = new File(System.getProperty("user.dir") + "/reports/" + fileName + ".png");
+		File filee = new File(
+				System.getProperty("user.dir") + File.separator + "reports" + File.separator + fileName + ".png");
 		try {
 			FileUtils.copyFile(file, filee);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return System.getProperty("user.dir") + "/reports/" + fileName + ".png";
+		return System.getProperty("user.dir") + File.separator + "reports" + File.separator + fileName + ".png";
 	}
 }

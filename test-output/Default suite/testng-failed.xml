@@ -6,6 +6,8 @@
       <class name="demo.tests">
         <methods>
           <include name="KillConfiguration"/>
+          <include name="serverSetup"/>
+          <include name="serverKill"/>
           <include name="TriggerConfiguration"/>
           <include name="fs"/>
         </methods>
