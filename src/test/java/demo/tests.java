@@ -8,10 +8,11 @@ import io.appium.java_client.touch.offset.PointOption;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.annotations.Test;
+
+import Pages.LoginPage;
+import Pages.PopupPages;
 import io.appium.java_client.AppiumBy;
 import utility.BaseTest;
-import LoginPage.LoginPage;
-import PopupPages.PopupPages;
 
 public class tests extends BaseTest {
 	
