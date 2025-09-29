@@ -134,10 +134,6 @@ public class NewLeadPage extends ReusableUtils {
         clearAndType(inputTeams, teams);
     }
 
-    public void tapSave(){
-        safeClick(buttonSave);
-    }
-
     public boolean isOnBasicProfile(){
         return isDisplayed(tabBasicProfile);
     }
@@ -150,9 +146,8 @@ public class NewLeadPage extends ReusableUtils {
         safeClick(addPhoneLink);
     }
 
-    public void tapSaveAndWaitUntilGone(){
+    public void tapSaveLeadButton(){
         safeClick(buttonSave);
-        waitUntilElementInvisible(By.id("com.amura.selldo.staging:id/button_add_lead"));
     }
 
     public void setCampaign(String campaignName){

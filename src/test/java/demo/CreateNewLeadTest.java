@@ -11,7 +11,7 @@ import utility.BaseTest;
 public class CreateNewLeadTest extends BaseTest {
 	
 	@Test
-	public void fs() throws InterruptedException  {
+	public void createNewLeadWithOnlyPhone() throws InterruptedException  {
 		
 		LoginPage loginPage = new LoginPage(driver);
 		PopupPages popupPages = new PopupPages(driver);
@@ -22,7 +22,30 @@ public class CreateNewLeadTest extends BaseTest {
 		loginPage.login("aniket.khandizod+sales@sell.do", "amura@123");
 		popupPages.clickWhatsNewPopup();
 
-		dashBoardPage.clickOnRefreshButton();
+		dashBoardPage.clickOnNewEnquiryButton();
+		allLeadPage.clickOnAddButton();
+
+		newLeadPage.setSalutation("Mr.");
+		newLeadPage.enterFirstName(Random("A", 10));
+		newLeadPage.enterLastName(Random("A", 10));
+		newLeadPage.setPhoneType("Mobile");
+		newLeadPage.enterPhoneNumber(randomPhone());
+		newLeadPage.setCampaign("Organic");
+		newLeadPage.tapSaveLeadButton();
+	} 
+
+	@Test
+	public void createNewLeadWithOnlyEmail() throws InterruptedException  {
+		
+		LoginPage loginPage = new LoginPage(driver);
+		PopupPages popupPages = new PopupPages(driver);
+		DashBoardPage dashBoardPage = new DashBoardPage(driver);
+		AllLeadPage allLeadPage = new AllLeadPage(driver);
+		NewLeadPage newLeadPage = new NewLeadPage(driver);
+
+		loginPage.login("aniket.khandizod+sales@sell.do", "amura@123");
+		popupPages.clickWhatsNewPopup();
+
 		dashBoardPage.clickOnNewEnquiryButton();
 		allLeadPage.clickOnAddButton();
 
@@ -31,13 +54,8 @@ public class CreateNewLeadTest extends BaseTest {
 		newLeadPage.enterLastName(Random("A", 10));
 		newLeadPage.setEmailType("Personal");
 		newLeadPage.enterEmail(randomEmail());
-		newLeadPage.setPhoneType("Mobile");
-		newLeadPage.enterPhoneNumber(randomPhone());
 		newLeadPage.setCampaign("Organic");
-		newLeadPage.tapSave();
-		newLeadPage.tapSaveAndWaitUntilGone();
-
-		
+		newLeadPage.tapSaveLeadButton();
 	} 
 }
 
