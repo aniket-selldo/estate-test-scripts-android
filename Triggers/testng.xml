@@ -5,10 +5,10 @@
 		<listener class-name="utility.Listneers"></listener>
 		<listener class-name="utility.AnnotationTransformer"></listener>
 	</listeners>
-	<test thread-count="1" parallel="classes" name="Test">
+    <test thread-count="1" name="Test">
 		<classes>
 
-			<class name="demo.tests" />
+			<class name="demo.CreateNewLeadTest" />
 	
 		</classes>
 	</test>

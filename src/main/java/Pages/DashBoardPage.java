@@ -26,5 +26,11 @@ public class DashBoardPage extends ReusableUtils {
         waitUntilElementClickable(refreshButton).click();
     }
 
+    public void clickOnNewEnquiryButton() {
+        waitUntilElementClickable(newEnquiryButton).click();
+    }
+
+    
+
 
 }

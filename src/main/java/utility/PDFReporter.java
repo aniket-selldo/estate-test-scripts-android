@@ -1,6 +1,7 @@
 package utility;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -8,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.Properties;
 
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
@@ -33,7 +35,7 @@ public class PDFReporter {
 	private static Document document;
 	private static PdfWriter writer;
 	private static List<TestResult> testResults = new ArrayList<>();
-	private static final String SELLDO_HEADER_IMAGE = System.getProperty("user.dir") + File.separator + "SampleFiles" + File.separator + "selldo.jpg";
+    private static final String SELLDO_HEADER_IMAGE = System.getProperty("user.dir") + File.separator + "SampleFiles" + File.separator + "selldo.jpg";
 
 	private static class TestResult {
 		String name;
@@ -57,7 +59,7 @@ public class PDFReporter {
 		
 		try {
 			// Create PDF Reports directory
-			File pdfDir = new File(PDF_REPORT_PATH);
+            File pdfDir = new File(this.PDF_REPORT_PATH);
 			if (!pdfDir.exists()) {
 				pdfDir.mkdirs();
 			}
@@ -67,12 +69,13 @@ public class PDFReporter {
 			String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
 			String pdfFileName = "TestReport_" + ".pdf";
 
-			writer = PdfWriter.getInstance(document, new FileOutputStream(PDF_REPORT_PATH + pdfFileName));
+            writer = PdfWriter.getInstance(document, new FileOutputStream(this.PDF_REPORT_PATH + pdfFileName));
 			document.open();
 
 			// Add header image
 			try {
-				Image headerImage = Image.getInstance(SELLDO_HEADER_IMAGE);
+				String headerPath = resolveHeaderImagePath();
+				Image headerImage = Image.getInstance(headerPath);
 				headerImage.scaleToFit(200, 100); // Adjust size as needed
 				headerImage.setAlignment(Element.ALIGN_CENTER);
 				headerImage.setAbsolutePosition(
@@ -107,7 +110,41 @@ public class PDFReporter {
 		} catch (DocumentException | IOException e) {
 			e.printStackTrace();
 		}
+
 	}
+
+    private String resolveHeaderImagePath() {
+        // Try to read from config.properties -> SampleFilePath first, then fallback
+        try {
+            Properties prop = new Properties();
+            File config = new File(System.getProperty("user.dir") + File.separator + "config.properties");
+            if (config.exists()) {
+                try (FileInputStream fis = new FileInputStream(config)) {
+                    prop.load(fis);
+                }
+                String configured = prop.getProperty("SampleFilePath");
+                if (configured == null || configured.trim().isEmpty()) {
+                    configured = prop.getProperty("filePath");
+                }
+                if (configured != null && !configured.trim().isEmpty()) {
+                    String normalized = configured.replace("\\", "/");
+                    File candidate;
+                    if (normalized.startsWith("/")) {
+                        candidate = new File(System.getProperty("user.dir") + normalized);
+                    } else {
+                        candidate = new File(System.getProperty("user.dir") + File.separator + normalized);
+                    }
+                    if (candidate.exists()) {
+                        return candidate.getAbsolutePath();
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // Fallback to default location
+        File fallback = new File(SELLDO_HEADER_IMAGE);
+        return fallback.getAbsolutePath();
+    }
 
 	private void addTableHeader() throws DocumentException {
 		PdfPTable table = new PdfPTable(3);
@@ -230,7 +267,7 @@ public class PDFReporter {
 		try {
 			TakesScreenshot ts = (TakesScreenshot) driver;
 			File source = ts.getScreenshotAs(OutputType.FILE);
-			String destination = PDF_REPORT_PATH + testName + "_"
+            String destination = this.PDF_REPORT_PATH + testName + "_"
 					+ new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".png";
 			File finalDestination = new File(destination);
 			org.apache.commons.io.FileUtils.copyFile(source, finalDestination);

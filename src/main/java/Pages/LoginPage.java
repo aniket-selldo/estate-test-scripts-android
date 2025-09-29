@@ -1,4 +1,4 @@
-package LoginPage;
+package Pages;
 
 import io.appium.java_client.android.AndroidDriver;
 import org.openqa.selenium.WebElement;
@@ -24,9 +24,9 @@ public class LoginPage extends ReusableUtils {
     private WebElement signUpButton;
 
     public void login(String userName, String password) {
-        this.userName.sendKeys(userName);
-        this.password.sendKeys(password);
-        this.waitUntilElementClickable(signUpButton).click();
+        super.waitUntilElementVisible(this.userName).sendKeys(userName);
+        super.waitUntilElementVisible(this.password).sendKeys(password);
+        super.waitUntilElementClickable(this.signUpButton).click();
     }
 
 }

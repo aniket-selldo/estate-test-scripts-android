@@ -29,9 +29,16 @@ public class Listneers extends BaseTest implements ITestListener {
 	public void onTestStart(ITestResult result) {
 		pdf.startTest(result.getName());
 		String reportPath = System.getProperty("user.dir") + File.separator + "reports";
-		for (File file : new File(reportPath).listFiles()) {
-			if (file.isFile() && file.exists()) {
-				file.deleteOnExit();
+		File reportDir = new File(reportPath);
+		if (!reportDir.exists()) {
+			reportDir.mkdirs();
+		}
+		File[] existing = reportDir.listFiles();
+		if (existing != null) {
+			for (File file : existing) {
+				if (file.isFile() && file.exists()) {
+					file.deleteOnExit();
+				}
 			}
 		}
 		test = extent.createTest(result.getMethod().getMethodName());
@@ -57,11 +64,14 @@ public class Listneers extends BaseTest implements ITestListener {
 		try {
 			pdf.addTestResult(result, driver);
 			filePath = getScreenshot(result.getMethod().getMethodName(), driver);
-		//	filePathTrimmed = ".." + filePath.split(Paths.get(currentDir).getFileName().toString())[1];
-			filePathTrimmed = new File(filePath).getName();
+			if (filePath != null && !filePath.trim().isEmpty() && new File(filePath).exists()) {
+				filePathTrimmed = new File(filePath).getName();
+			}
 		} catch (Exception e) {
 		}
-		extentTest.get().addScreenCaptureFromPath(filePathTrimmed, result.getMethod().getMethodName());
+		if (filePathTrimmed != null && !filePathTrimmed.trim().isEmpty()) {
+			extentTest.get().addScreenCaptureFromPath(filePathTrimmed, result.getMethod().getMethodName());
+		}
 		//pdf.addTestResult(result, null);
 		extentTest.get().fail(result.getThrowable());
 	}

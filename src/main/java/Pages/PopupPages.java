@@ -1,4 +1,4 @@
-package PopupPages;
+package Pages;
 
 import io.appium.java_client.android.AndroidDriver;
 import org.openqa.selenium.WebElement;
@@ -22,13 +22,17 @@ public class PopupPages extends ReusableUtils {
     private WebElement whatsNewUpdatePopup;
 
     public void clickNewVersionUpdatePopup() {
-        if(this.newVersionUpdatePopup.isDisplayed()){
+        if(isDisplayed(this.newVersionUpdatePopup)){
             this.newVersionUpdatePopup.click();
         }
     }
 
     public void clickWhatsNewPopup() {
-        waitUntilElementClickable(this.whatsNewUpdatePopup).click();
+        try {
+            waitUntilElementClickable(this.whatsNewUpdatePopup).click();
+        } catch (Exception e) {
+            // TODO: handle exception
+        }
     }
 
 }

@@ -9,8 +9,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+// import java.text.SimpleDateFormat;
+// import java.util.Date;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -32,8 +32,16 @@ public class ZipCompress {
 		}
 
 		final Path sourceDir = Paths.get(dirPath);
+		if (!Files.exists(sourceDir)) {
+			return;
+		}
 		//String TodaysDate = new SimpleDateFormat("dd_MM_YYYY hh-mm-ss a").format(new Date().getTime());
-		String zipFileName = System.getProperty("user.dir")+File.separator+"Zip"+File.separator+fileName.concat(".zip");
+		String zipDirPath = System.getProperty("user.dir")+File.separator+"Zip";
+		File zipDir = new File(zipDirPath);
+		if (!zipDir.exists()) {
+			zipDir.mkdirs();
+		}
+		String zipFileName = zipDirPath + File.separator + fileName.concat(".zip");
 		try {
 			final ZipOutputStream outputStream = new ZipOutputStream(new FileOutputStream(zipFileName));
 			Files.walkFileTree(sourceDir, new SimpleFileVisitor<Path>() {

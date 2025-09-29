@@ -4,7 +4,6 @@ import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.AppiumBy;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import java.time.Duration;
-
 import java.io.File;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
@@ -26,9 +25,10 @@ public class ReusableUtils {
     private WebDriverWait wait;
     protected ReusableUtils(AndroidDriver driver){
         this.driver = driver;
-        this.wait = new  WebDriverWait(driver,Duration.ofSeconds(120));
+        this.wait = new  WebDriverWait(driver,Duration.ofSeconds(10));
     }
 
+    // ===================== Wait Utilities (Extended) =====================
     protected WebElement waitUntilElementVisible(WebElement element){
         wait.until(ExpectedConditions.visibilityOf(element));
         return element;
@@ -44,7 +44,6 @@ public class ReusableUtils {
         return element;
     }
     
-    // ===================== Wait Utilities (Extended) =====================
     protected WebElement waitUntilPresenceLocated(By locator){
         return (WebElement) wait.until(ExpectedConditions.presenceOfElementLocated(locator));
     }
@@ -177,10 +176,10 @@ public class ReusableUtils {
             "new UiScrollable(new UiSelector().scrollable(true)).scrollIntoView(new UiSelector().resourceId(\"" + resourceId + "\"))"));
     }
 
-    protected boolean scrollUntilVisible(By locator, int maxSwipes){
+    protected boolean scrollUntilVisible(WebElement locator, int maxSwipes){
         for(int i=0; i<maxSwipes; i++){
             try {
-                WebElement el = driver.findElement(locator);
+                WebElement el = locator;
                 if(el.isDisplayed()){
                     return true;
                 }
