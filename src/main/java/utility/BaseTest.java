@@ -44,20 +44,23 @@ public class BaseTest {
 	public void serverSetup() {
 		if(triggerServer){
 			// Trigger Server
+			System.out.println(ConsoleColors.RED_BOLD_BRIGHT + "Starting server" + ConsoleColors.RESET);
 			service = new AppiumServiceBuilder().withAppiumJS(mainJsPath).withIPAddress(IPAdress).usingPort(port).build();
 			service.start();
 		}
+	}
+	
+	@BeforeTest(alwaysRun = true)
+	public void TriggerConfiguration() throws MalformedURLException, URISyntaxException {
+		
 		// Configurations
 		options = new UiAutomator2Options();
 		options.setDeviceName(virtualDeviceName);
 		options.setApp(apkFilePath);
 		options.setCapability("autoGrantPermissions", true);
-	}
-
-	@BeforeTest(alwaysRun = true)
-	public void TriggerConfiguration() throws MalformedURLException, URISyntaxException {
-
+		
 		// Trigger Driver
+		System.out.println(ConsoleColors.RED_BOLD_BRIGHT + "Starting driver" + ConsoleColors.RESET);
 		driver = new AndroidDriver(new URI("http://" + IPAdress + ":" + port).toURL(), options);
 
 		// Set Implicitly Wait
@@ -65,14 +68,23 @@ public class BaseTest {
 
 	}
 
-	@AfterTest(alwaysRun = true)
-	public void KillConfiguration() {
-		driver.quit();
-	}
+    @AfterTest(alwaysRun = true)
+    public void KillConfiguration() {
+        try {
+            if (driver != null) {
+                driver.quit();
+            }
+        } catch (Exception e) {
+            System.out.println(ConsoleColors.RED_BOLD_BRIGHT + "Driver not quit" + ConsoleColors.RESET);
+        } finally {
+            driver = null;
+        }
+    }
 
 	@AfterSuite(alwaysRun = true)
 	public void serverKill() {
 		if(triggerServer){
+			System.out.println(ConsoleColors.RED_BOLD_BRIGHT + "Killing server" + ConsoleColors.RESET);
 			service.stop();
 		}
 	}
@@ -98,7 +110,7 @@ public class BaseTest {
 	}
 
 	public String randomGmail() {
-		String email[] = prop("Export_Gmail").split("@");
+		String email[] = prop("Gmail").split("@");
 		String name = email[0];
 		String domain = email[1];
 		return name + "+" + Random("A", 15).toLowerCase() + "@" + domain;

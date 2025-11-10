@@ -12,7 +12,7 @@ public class AllLeadPage extends ReusableUtils {
     public AllLeadPage(AndroidDriver driver) {
         super(driver);
         this.driver = driver;
-        PageFactory.initElements(new AppiumFieldDecorator(driver), this);
+        PageFactory.initElements(new AppiumFieldDecorator(driver, java.time.Duration.ofSeconds(20)), this);
     }
 
     // Add button Elements

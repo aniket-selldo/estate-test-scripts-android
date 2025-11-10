@@ -13,7 +13,7 @@ public class LoginPage extends ReusableUtils {
     public LoginPage(AndroidDriver driver) {
         super(driver);
         this.driver = driver;
-        PageFactory.initElements(new AppiumFieldDecorator(driver), this);
+        PageFactory.initElements(new AppiumFieldDecorator(driver, java.time.Duration.ofSeconds(20)), this);
     }
 
     @AndroidFindBy(id = "com.amura.selldo.staging:id/input_email")

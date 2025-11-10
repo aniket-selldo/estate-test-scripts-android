@@ -13,7 +13,7 @@ public class PopupPages extends ReusableUtils {
     public PopupPages(AndroidDriver driver) {
         super(driver);
         this.driver = driver;
-        PageFactory.initElements(new AppiumFieldDecorator(driver), this);
+        PageFactory.initElements(new AppiumFieldDecorator(driver, java.time.Duration.ofSeconds(20)), this);
     }
 
     @AndroidFindBy(xpath = "//android.widget.Button[@resource-id='android:id/button2']")

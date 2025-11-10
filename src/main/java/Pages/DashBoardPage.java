@@ -13,7 +13,7 @@ public class DashBoardPage extends ReusableUtils {
     public DashBoardPage(AndroidDriver driver) {
         super(driver);
         this.driver = driver;
-        PageFactory.initElements(new AppiumFieldDecorator(driver), this);
+        PageFactory.initElements(new AppiumFieldDecorator(driver, java.time.Duration.ofSeconds(20)), this);
     }
 
     @AndroidFindBy(xpath = "//android.widget.Button[@content-desc='Refresh']")

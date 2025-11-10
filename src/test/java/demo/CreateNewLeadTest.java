@@ -19,7 +19,7 @@ public class CreateNewLeadTest extends BaseTest {
 		AllLeadPage allLeadPage = new AllLeadPage(driver);
 		NewLeadPage newLeadPage = new NewLeadPage(driver);
 
-		loginPage.login("aniket.khandizod+sales@sell.do", "amura@123");
+		loginPage.login(prop("Sales_Email"), prop("Password"));
 		popupPages.clickWhatsNewPopup();
 
 		dashBoardPage.clickOnNewEnquiryButton();
@@ -43,7 +43,7 @@ public class CreateNewLeadTest extends BaseTest {
 		AllLeadPage allLeadPage = new AllLeadPage(driver);
 		NewLeadPage newLeadPage = new NewLeadPage(driver);
 
-		loginPage.login("aniket.khandizod+sales@sell.do", "amura@123");
+		loginPage.login(prop("Sales_Email"), prop("Password"));
 		popupPages.clickWhatsNewPopup();
 
 		dashBoardPage.clickOnNewEnquiryButton();

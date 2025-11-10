@@ -1,17 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
-<suite name="Suite">
-	<listeners>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite thread-count="1" parallel="classes" name="Suite">
+<listeners>
 		<listener class-name="utility.Listneers"></listener>
 		<listener class-name="utility.AnnotationTransformer"></listener>
 	</listeners>
-    <test thread-count="1" name="Test">
-		<classes>
-
-			<class name="demo.CreateNewLeadTest" />
-	
-		</classes>
-	</test>
-
-</suite> <!--
-Suite -->
+  <test thread-count="1" parallel="classes" name="Test">
+    <classes>
+      <class name="demo.CreateNewLeadTest"/>
+    </classes>
+  </test>
+</suite> 
