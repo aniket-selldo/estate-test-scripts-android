@@ -12,9 +12,9 @@ import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.testng.annotations.AfterSuite;
-import org.testng.annotations.AfterTest;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeSuite;
-import org.testng.annotations.BeforeTest;
+import org.testng.annotations.BeforeMethod;
 
 import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.android.options.UiAutomator2Options;
@@ -50,7 +50,7 @@ public class BaseTest {
 		}
 	}
 	
-	@BeforeTest(alwaysRun = true)
+	@BeforeMethod(alwaysRun = true)
 	public void TriggerConfiguration() throws MalformedURLException, URISyntaxException {
 		
 		// Configurations
@@ -58,6 +58,7 @@ public class BaseTest {
 		options.setDeviceName(virtualDeviceName);
 		options.setApp(apkFilePath);
 		options.setCapability("autoGrantPermissions", true);
+		options.setCapability("noReset", false);
 		
 		// Trigger Driver
 		System.out.println(ConsoleColors.RED_BOLD_BRIGHT + "Starting driver" + ConsoleColors.RESET);
@@ -68,7 +69,7 @@ public class BaseTest {
 
 	}
 
-    @AfterTest(alwaysRun = true)
+    @AfterMethod(alwaysRun = true)
     public void KillConfiguration() {
         try {
             if (driver != null) {
