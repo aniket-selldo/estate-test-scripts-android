@@ -29,12 +29,12 @@ import java.security.SecureRandom;
 public class BaseTest {
 
 	protected Configuration props = prop();
-	public static final String env = "v2";
+	public static final String env = "app";
 	protected AndroidDriver driver;
 	protected AppiumDriverLocalService service;
 	private static UiAutomator2Options options;
 	private static final File mainJsPath = new File(System.getProperty("user.home") + "/AppData/Roaming/npm/node_modules/appium/build/lib/main.js");
-	private static final String apkFilePath = System.getProperty("user.dir") + "/resources/develop-DEV-debug-285-9.5.apk";
+	private static final String apkFilePath = System.getProperty("user.dir") + "/resources/develop-DEV-debug-290-9.8.apk";
 	private static final String IPAdress = "127.0.0.1";
 	private static final int port = 4723;
 	private static final String virtualDeviceName = "AndroidPhone";
@@ -60,8 +60,6 @@ public class BaseTest {
 		options.setCapability("autoGrantPermissions", true);
 		options.setCapability("noReset", false);
 		
-		// Trigger Driver
-		System.out.println(ConsoleColors.RED_BOLD_BRIGHT + "Starting driver" + ConsoleColors.RESET);
 		driver = new AndroidDriver(new URI("http://" + IPAdress + ":" + port).toURL(), options);
 
 		// Set Implicitly Wait

@@ -135,4 +135,74 @@ public class APIUtils extends API_Reusable {
 		throw new RuntimeException("Failed to create lead after " + maxRetries + " attempts.", lastError);
 	}
 
+	public JSONObject leadRetrieveByEmailOrPhone(String lead, boolean flagForDummyLead) {
+
+		final String baseUrl = prop("URL");
+
+		// Determine identifier type
+		final boolean isEmail = lead != null && lead.contains("@");
+		final String identifierType = isEmail ? "email" : "phone";
+
+		// Normalize phone input similar to TS implementation
+		String normalizedLead = lead == null ? "" : lead;
+		if (!isEmail && normalizedLead.trim().length() > 10) {
+			String trimmed = normalizedLead.replace("+", "").trim();
+			if (trimmed.length() > 10) {
+				trimmed = trimmed.substring(trimmed.length() - 10);
+			}
+			normalizedLead = trimmed;
+		}
+
+		// RestAssured timeout config (30s)
+		RestAssuredConfig timeoutConfig = RestAssuredConfig.config().httpClient(
+				HttpClientConfig.httpClientConfig()
+						.setParam("http.connection.timeout", 30000)
+						.setParam("http.socket.timeout", 30000)
+						.setParam("http.connection-manager.timeout", 30000)
+		);
+
+		final String endpoint = "/api/leads/" + identifierType + "/retrieve_lead";
+		final int maxRetries = 3;
+		Exception lastError = null;
+
+		for (int attempt = 1; attempt <= maxRetries; attempt++) {
+			try {
+				Response response = RestAssured
+						.given()
+						.config(timeoutConfig)
+						.baseUri(baseUrl)
+						.contentType(ContentType.JSON)
+						.queryParam("api_key", fullAccessApiKey)
+						.queryParam("client_id", clientId)
+						.queryParam("fetch_all_matching_leads", flagForDummyLead)
+						.queryParam("value", normalizedLead)
+						.get(endpoint)
+						.thenReturn();
+
+				int status = response.getStatusCode();
+				if (status >= 200 && status < 300) {
+					return new JSONObject(response.asString());
+				}
+
+				lastError = new RuntimeException("Unexpected status: " + status + ", body: " + response.asString());
+			} catch (Exception e) {
+				lastError = e;
+			}
+
+			// Backoff: 1s, 2s, ...
+			if (attempt < maxRetries) {
+				try {
+					Thread.sleep(1000L * attempt);
+				} catch (InterruptedException ie) {
+					Thread.currentThread().interrupt();
+				}
+			}
+		}
+
+		if (lastError instanceof RuntimeException re) {
+			throw re;
+		}
+		throw new RuntimeException("Failed to retrieve lead after " + maxRetries + " attempts.", lastError);
+	}
+
 }

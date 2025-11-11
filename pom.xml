@@ -31,6 +31,12 @@
 								<suiteXmlFiles>
 									<suiteXmlFile>Triggers/Smoke.xml</suiteXmlFile>
 								</suiteXmlFiles>
+								<argLine>-Dfile.encoding=UTF-8 -Djansi.passthrough=true</argLine>
+								<systemPropertyVariables>
+									<file.encoding>UTF-8</file.encoding>
+									<jansi.passthrough>true</jansi.passthrough>
+								</systemPropertyVariables>
+								<useSystemClassLoader>false</useSystemClassLoader>
 							</configuration>
 						</plugin>
 					</plugins>
@@ -50,6 +56,12 @@
 								<suiteXmlFiles>
 									<suiteXmlFile>Triggers/testng.xml</suiteXmlFile>
 								</suiteXmlFiles>
+								<argLine>-Dfile.encoding=UTF-8 -Djansi.passthrough=true</argLine>
+								<systemPropertyVariables>
+									<file.encoding>UTF-8</file.encoding>
+									<jansi.passthrough>true</jansi.passthrough>
+								</systemPropertyVariables>
+								<useSystemClassLoader>false</useSystemClassLoader>
 							</configuration>
 						</plugin>
 					</plugins>
@@ -69,6 +81,12 @@
 								<suiteXmlFiles>
 									<suiteXmlFile>Triggers/DryRunMega.xml</suiteXmlFile>
 								</suiteXmlFiles>
+								<argLine>-Dfile.encoding=UTF-8 -Djansi.passthrough=true</argLine>
+								<systemPropertyVariables>
+									<file.encoding>UTF-8</file.encoding>
+									<jansi.passthrough>true</jansi.passthrough>
+								</systemPropertyVariables>
+								<useSystemClassLoader>false</useSystemClassLoader>
 							</configuration>
 						</plugin>
 					</plugins>
@@ -159,18 +177,6 @@
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-collections4</artifactId>
 			<version>4.4</version>
-		</dependency>
-
-		<!--Extent Report dependency-->
-		<dependency>
-			<groupId>com.aventstack</groupId>
-			<artifactId>extentreports</artifactId>
-			<version>5.0.9</version>
-		</dependency>
-		<dependency>
-			<groupId>commons-logging</groupId>
-			<artifactId>commons-logging</artifactId>
-			<version>1.1.1</version>
 		</dependency>
 
 		<!--Rest Assured-->

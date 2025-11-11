@@ -18,8 +18,21 @@ public class LeadProfilePage extends ReusableUtils {
 
     @AndroidFindBy(id = "com.amura.selldo.staging:id/text_lead_id")
     private WebElement leadID;
+    @AndroidFindBy(id = "com.amura.selldo.staging:id/text_lead_name")
+    private WebElement leadName;
+    @AndroidFindBy(id = "com.amura.selldo.staging:id/text_owner")
+    private WebElement leadOwnerName;
 
     public String getLeadID() {
-        return waitUntilElementVisible(leadID).getText();
+        return waitUntilElementVisible(leadID).getText().trim();
     }
+
+    public String getLeadOwnerName() {
+        return waitUntilElementVisible(leadOwnerName).getText().replaceFirst("(?i)^\\s*Owner:\\s*", "").toLowerCase().trim();
+    }
+
+    public String getLeadName() {
+        return waitUntilElementVisible(leadName).getText().toLowerCase().trim();
+    }
+
 }

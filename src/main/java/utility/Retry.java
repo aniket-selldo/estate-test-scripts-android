@@ -7,7 +7,7 @@ import java.io.StringWriter;
 
 public class Retry implements IRetryAnalyzer {
 	int retrycount = 0;
-	int maxretyrcount = System.getProperty("user.name").equalsIgnoreCase("aniket")?0:0;
+	int maxretyrcount = System.getProperty("user.name").equalsIgnoreCase("aniket")?1:2;
 	boolean consoleError = true;
 
 	@Override
