@@ -29,7 +29,7 @@ public class PopupPages extends ReusableUtils {
 
     public void clickWhatsNewPopup() {
         try {
-            waitUntilElementClickable(this.whatsNewUpdatePopup).click();
+            this.whatsNewUpdatePopup.click();
         } catch (Exception e) {
             // TODO: handle exception
         }

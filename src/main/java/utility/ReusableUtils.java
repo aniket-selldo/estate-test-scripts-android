@@ -25,7 +25,7 @@ public class ReusableUtils {
     private WebDriverWait wait;
     protected ReusableUtils(AndroidDriver driver){
         this.driver = driver;
-        this.wait = new  WebDriverWait(driver,Duration.ofSeconds(10));
+        this.wait = new  WebDriverWait(driver,Duration.ofSeconds(20));
     }
 
     // ===================== Wait Utilities (Extended) =====================
@@ -260,17 +260,20 @@ public class ReusableUtils {
     }
 
     // ===================== Highlight (WEBVIEW only) =====================
-    protected void highlightElement(WebElement element, String cssOutline, Duration highlightDuration){
-        try {
-            if(getCurrentContext().toUpperCase().contains("WEBVIEW")){
-                JavascriptExecutor js = (JavascriptExecutor) driver;
-                String originalStyle = (String) js.executeScript("var el=arguments[0]; var orig=el.getAttribute('style'); el.setAttribute('style', (orig?orig+';':'') + 'outline:" + cssOutline + ";'); return orig;", element);
-                Thread.sleep(Math.max(0, highlightDuration.toMillis()));
-                js.executeScript("arguments[0].setAttribute('style', arguments[1]);", element, originalStyle);
-            }
-        } catch (InterruptedException e){
-            Thread.currentThread().interrupt();
-        } catch (Exception ignored) {}
+
+    protected void highlightElement(WebElement element){
+		try {
+			if(getCurrentContext().toUpperCase().contains("WEBVIEW")){
+				JavascriptExecutor js = (JavascriptExecutor) driver;
+				String originalStyle = (String) js.executeScript("var el=arguments[0]; var orig=el.getAttribute('style'); el.setAttribute('style', (orig?orig+';':'') + 'outline:3px solid #00FF00;'); return orig;", element);
+				try {
+					Thread.sleep(200);
+				} catch (InterruptedException ie){
+					Thread.currentThread().interrupt();
+				}
+				js.executeScript("arguments[0].setAttribute('style', arguments[1]);", element, originalStyle);
+			}
+		} catch (Exception ignored) {}
     }
 
     // ===================== Activity Wait (Android) =====================
@@ -296,4 +299,112 @@ public class ReusableUtils {
     protected AndroidDriver getDriver(){
         return this.driver;
     }
+
+	// ===================== App Idle / Full Load Waits =====================
+	/**
+	 * Waits until the app appears "idle".
+	 * - In WEBVIEW: waits for document.readyState === 'complete' and no pending jQuery requests (if present),
+	 *   and keeps that state stable for the given stablePeriod.
+	 * - In NATIVE: waits until the XML page source remains unchanged for the given stablePeriod.
+	 *
+	 * @param timeout      overall timeout to give up
+	 * @param stablePeriod how long the state must remain stable (no changes)
+	 * @return true if idle detected within timeout, false otherwise
+	 */
+	protected boolean waitTillAppIdle(Duration timeout, Duration stablePeriod){
+		String ctx = "";
+		try {
+			ctx = getCurrentContext();
+		} catch (Exception ignored){}
+		if(ctx != null && ctx.toUpperCase().contains("WEBVIEW")){
+			return waitForWebViewStable(timeout, stablePeriod);
+		}
+		return waitForNativeIdle(timeout, stablePeriod);
+	}
+
+	/**
+	 * WEBVIEW-only: waits until DOM is fully loaded and any common JS frameworks are idle,
+	 * then verifies that state remains stable for stablePeriod.
+	 */
+	private boolean waitForWebViewStable(Duration timeout, Duration stablePeriod){
+		long endAt = System.currentTimeMillis() + timeout.toMillis();
+		long stableSince = -1L;
+		while(System.currentTimeMillis() < endAt){
+			boolean isReadyAndIdle = false;
+			try {
+				JavascriptExecutor js = (JavascriptExecutor) driver;
+				Object result = js.executeScript(
+					"try {\n" +
+					"  var ready = (document.readyState === 'complete');\n" +
+					"  var jqIdle = (typeof window.jQuery === 'undefined') ? true : (window.jQuery.active === 0);\n" +
+					"  var ngIdle = true;\n" +
+					"  if (window.angular && typeof window.getAllAngularTestabilities === 'function') {\n" +
+					"    ngIdle = window.getAllAngularTestabilities().every(function (t) { return t.isStable(); });\n" +
+					"  }\n" +
+					"  return !!(ready && jqIdle && ngIdle);\n" +
+					"} catch (e) { return false; }"
+				);
+				isReadyAndIdle = Boolean.TRUE.equals(result);
+			} catch (Exception ignored){}
+
+			long now = System.currentTimeMillis();
+			if(isReadyAndIdle){
+				if(stableSince < 0L){
+					stableSince = now;
+				}
+				if(now - stableSince >= stablePeriod.toMillis()){
+					return true;
+				}
+			} else {
+				stableSince = -1L;
+			}
+
+			try {
+				Thread.sleep(250);
+			} catch (InterruptedException ie){
+				Thread.currentThread().interrupt();
+				break;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * NATIVE context: waits until page source remains unchanged for stablePeriod.
+	 * This is a pragmatic proxy for "no more UI updates happening".
+	 */
+	private boolean waitForNativeIdle(Duration timeout, Duration stablePeriod){
+		long endAt = System.currentTimeMillis() + timeout.toMillis();
+		String lastSource = null;
+		long stableSince = -1L;
+		while(System.currentTimeMillis() < endAt){
+			String currentSource;
+			try {
+				currentSource = driver.getPageSource();
+			} catch (Exception e){
+				currentSource = null;
+			}
+
+			long now = System.currentTimeMillis();
+			if(currentSource != null && currentSource.equals(lastSource)){
+				if(stableSince < 0L){
+					stableSince = now;
+				}
+				if(now - stableSince >= stablePeriod.toMillis()){
+					return true;
+				}
+			} else {
+				lastSource = currentSource;
+				stableSince = -1L;
+			}
+
+			try {
+				Thread.sleep(300);
+			} catch (InterruptedException ie){
+				Thread.currentThread().interrupt();
+				break;
+			}
+		}
+		return false;
+	}
 }

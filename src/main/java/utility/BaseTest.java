@@ -51,7 +51,7 @@ public class BaseTest {
 	}
 	
 	@BeforeMethod(alwaysRun = true)
-	public void TriggerConfiguration() throws MalformedURLException, URISyntaxException {
+	public void TriggerConfiguration() throws MalformedURLException, URISyntaxException, IOException, InterruptedException {
 		
 		// Configurations
 		options = new UiAutomator2Options();
@@ -60,6 +60,7 @@ public class BaseTest {
 		options.setCapability("autoGrantPermissions", true);
 		options.setCapability("noReset", false);
 		
+		// Trigger Driver
 		driver = new AndroidDriver(new URI("http://" + IPAdress + ":" + port).toURL(), options);
 
 		// Set Implicitly Wait
