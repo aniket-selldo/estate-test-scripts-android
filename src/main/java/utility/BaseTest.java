@@ -2,10 +2,11 @@ package utility;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.openqa.selenium.OutputType;
@@ -32,40 +33,73 @@ public class BaseTest {
 	public static final String env = "app";
 	protected AndroidDriver driver;
 	protected AppiumDriverLocalService service;
-	private static UiAutomator2Options options;
-	private static final File mainJsPath = new File(System.getProperty("user.home") + "/AppData/Roaming/npm/node_modules/appium/build/lib/main.js");
 	private static final String apkFilePath = System.getProperty("user.dir") + "/resources/develop-DEV-debug-290-9.8.apk";
-	private static final String IPAdress = "127.0.0.1";
+	private static final String IPAddress = "127.0.0.1";
 	private static final int port = 4723;
-	private static final String virtualDeviceName = "AndroidPhone";
-	private static final boolean triggerServer = false;
+	private static final String virtualDeviceName = "Pixel 9 Pro";
+	private static final Duration implicitWait = Duration.ofSeconds(5);
+	private static final boolean triggerServer = getBooleanFlag("triggerServer", true);
+	private static final boolean useBrowserStack = getBooleanFlag("useBrowserStack", false);
+	private static final String browserStackHubUrl = getConfigValue("browserStackHubUrl",
+			"https://hub-cloud.browserstack.com/wd/hub");
 
 	@BeforeSuite(alwaysRun = true)
 	public void serverSetup() {
-		if(triggerServer){
-			// Trigger Server
-			System.out.println(ConsoleColors.RED_BOLD_BRIGHT + "Starting server" + ConsoleColors.RESET);
-			service = new AppiumServiceBuilder().withAppiumJS(mainJsPath).withIPAddress(IPAdress).usingPort(port).build();
+		if (useBrowserStack) {
+			System.out.println(ConsoleColors.CYAN_BOLD + "Execution target: BrowserStack Cloud" + ConsoleColors.RESET);
+			if (triggerServer) {
+				System.out.println(ConsoleColors.YELLOW_BOLD
+						+ "triggerServer=true is ignored for BrowserStack execution."
+						+ ConsoleColors.RESET);
+			}
+			return;
+		}
+		if (!triggerServer) {
+			System.out.println(ConsoleColors.CYAN_BOLD
+					+ "Execution target: Local Appium (existing server expected at appiumServerUrl)"
+					+ ConsoleColors.RESET);
+			return;
+		}
+		try {
+			System.out.println(ConsoleColors.RED_BOLD_BRIGHT + "Starting local Appium server" + ConsoleColors.RESET);
+			AppiumServiceBuilder builder = new AppiumServiceBuilder()
+					.withIPAddress(IPAddress)
+					.usingPort(port);
+
+			File resolvedMainJs = resolveAppiumMainJs();
+			if (resolvedMainJs != null) {
+				builder.withAppiumJS(resolvedMainJs);
+			}
+
+			File nodeExecutable = resolveNodeExecutable();
+			if (nodeExecutable != null) {
+				builder.usingDriverExecutable(nodeExecutable);
+			}
+
+			service = builder.build();
 			service.start();
+			if (!service.isRunning()) {
+				throw new IllegalStateException("Appium service failed to start.");
+			}
+		} catch (Exception e) {
+			throw new RuntimeException("Unable to start local Appium server. "
+					+ "Provide -DappiumMainJs or APPIUM_MAIN_JS and optionally -DnodePath when needed.", e);
 		}
 	}
 	
 	@BeforeMethod(alwaysRun = true)
-	public void TriggerConfiguration() throws MalformedURLException, URISyntaxException, IOException, InterruptedException {
-		
-		// Configurations
-		options = new UiAutomator2Options();
-		options.setDeviceName(virtualDeviceName);
-		options.setApp(apkFilePath);
-		options.setCapability("autoGrantPermissions", true);
-		options.setCapability("noReset", false);
-		
-		// Trigger Driver
-		driver = new AndroidDriver(new URI("http://" + IPAdress + ":" + port).toURL(), options);
-
-		// Set Implicitly Wait
-		driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(5));
-
+	public void TriggerConfiguration() {
+		try {
+			UiAutomator2Options options = useBrowserStack
+					? buildBrowserStackOptions()
+					: buildLocalOptions();
+			URI remoteUri = resolveRemoteUri();
+			driver = new AndroidDriver(remoteUri.toURL(), options);
+			driver.manage().timeouts().implicitlyWait(implicitWait);
+		} catch (Exception e) {
+			throw new RuntimeException("Unable to create AndroidDriver session. "
+					+ "Verify flags/capabilities. triggerServer=" + triggerServer + ", useBrowserStack=" + useBrowserStack, e);
+		}
 	}
 
     @AfterMethod(alwaysRun = true)
@@ -83,10 +117,156 @@ public class BaseTest {
 
 	@AfterSuite(alwaysRun = true)
 	public void serverKill() {
-		if(triggerServer){
-			System.out.println(ConsoleColors.RED_BOLD_BRIGHT + "Killing server" + ConsoleColors.RESET);
-			service.stop();
+		if (!useBrowserStack && triggerServer && service != null) {
+			System.out.println(ConsoleColors.RED_BOLD_BRIGHT + "Stopping local Appium server" + ConsoleColors.RESET);
+			try {
+				if (service.isRunning()) {
+					service.stop();
+				}
+			} catch (Exception e) {
+				System.out.println(ConsoleColors.YELLOW_BOLD + "Appium server stop failed: "
+						+ e.getMessage() + ConsoleColors.RESET);
+			}
 		}
+	}
+
+	private static boolean getBooleanFlag(String key, boolean defaultValue) {
+		String systemValue = System.getProperty(key);
+		if (systemValue == null || systemValue.isBlank()) {
+			return defaultValue;
+		}
+		return Boolean.parseBoolean(systemValue.trim());
+	}
+
+	private static String getConfigValue(String key, String defaultValue) {
+		String systemValue = System.getProperty(key);
+		if (systemValue != null && !systemValue.isBlank()) {
+			return systemValue.trim();
+		}
+		String envValue = System.getenv(toEnvKey(key));
+		if (envValue != null && !envValue.isBlank()) {
+			return envValue.trim();
+		}
+		return defaultValue;
+	}
+
+	private static String getSensitiveValue(String key, String envKey) {
+		String value = System.getProperty(key);
+		if (value != null && !value.isBlank()) {
+			return value.trim();
+		}
+		String env = System.getenv(envKey);
+		if (env != null && !env.isBlank()) {
+			return env.trim();
+		}
+		return "";
+	}
+
+	private static URI resolveRemoteUri() {
+		String remoteUrl = useBrowserStack
+				? browserStackHubUrl
+				: getConfigValue("appiumServerUrl", "http://" + IPAddress + ":" + port);
+		return URI.create(remoteUrl);
+	}
+
+	private static String toEnvKey(String key) {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < key.length(); i++) {
+			char c = key.charAt(i);
+			if (Character.isUpperCase(c) && i > 0) {
+				sb.append('_');
+			}
+			sb.append(Character.toUpperCase(c));
+		}
+		return sb.toString();
+	}
+
+	private static File resolveNodeExecutable() {
+		String explicitNode = getConfigValue("nodePath", "");
+		if (!explicitNode.isBlank()) {
+			File nodeFile = new File(explicitNode);
+			return nodeFile.exists() ? nodeFile : null;
+		}
+		return null;
+	}
+
+	private static File resolveAppiumMainJs() {
+		String explicitPath = getConfigValue("appiumMainJs", "");
+		if (!explicitPath.isBlank()) {
+			File explicitFile = new File(explicitPath);
+			if (!explicitFile.exists()) {
+				throw new IllegalStateException("Configured appiumMainJs does not exist: " + explicitPath);
+			}
+			return explicitFile;
+		}
+
+		List<File> candidates = new ArrayList<>();
+		String userHome = System.getProperty("user.home");
+		candidates.add(new File(userHome + "/AppData/Roaming/npm/node_modules/appium/build/lib/main.js"));
+		candidates.add(new File("/usr/local/lib/node_modules/appium/build/lib/main.js"));
+		candidates.add(new File("/usr/lib/node_modules/appium/build/lib/main.js"));
+
+		String appiumHome = System.getenv("APPIUM_HOME");
+		if (appiumHome != null && !appiumHome.isBlank()) {
+			candidates.add(new File(appiumHome, "node_modules/appium/build/lib/main.js"));
+			candidates.add(new File(appiumHome, "build/lib/main.js"));
+		}
+
+		for (File candidate : candidates) {
+			if (candidate.exists()) {
+				return candidate;
+			}
+		}
+		return null;
+	}
+
+	private UiAutomator2Options buildLocalOptions() {
+		UiAutomator2Options options = new UiAutomator2Options();
+		String localDeviceName = getConfigValue("deviceName", virtualDeviceName);
+		String localAppPath = getConfigValue("apkPath", apkFilePath);
+		File appFile = new File(localAppPath);
+		if (!appFile.exists()) {
+			throw new IllegalStateException("APK not found at path: " + localAppPath
+					+ ". Pass -DapkPath or APK_PATH for local execution.");
+		}
+
+		options.setDeviceName(localDeviceName);
+		options.setApp(localAppPath);
+		options.setCapability("autoGrantPermissions", getBooleanFlag("autoGrantPermissions", true));
+		options.setCapability("noReset", getBooleanFlag("noReset", false));
+		return options;
+	}
+
+	private UiAutomator2Options buildBrowserStackOptions() {
+		UiAutomator2Options options = new UiAutomator2Options();
+		String username = getSensitiveValue("browserStackUsername", "BROWSERSTACK_USERNAME");
+		String accessKey = getSensitiveValue("browserStackAccessKey", "BROWSERSTACK_ACCESS_KEY");
+		if (username.isBlank() || accessKey.isBlank()) {
+			throw new IllegalStateException(
+					"BrowserStack credentials are missing. Pass -DbrowserStackUsername/-DbrowserStackAccessKey "
+							+ "or set BROWSERSTACK_USERNAME/BROWSERSTACK_ACCESS_KEY.");
+		}
+
+		String bsAppId = getConfigValue("browserStackAppId", "");
+		if (bsAppId.isBlank()) {
+			throw new IllegalStateException("BrowserStack app id is missing. Set -DbrowserStackAppId=bs://<app-id>.");
+		}
+
+		options.setCapability("app", bsAppId);
+		options.setCapability("platformName", "Android");
+		options.setCapability("browserstack.user", username);
+		options.setCapability("browserstack.key", accessKey);
+		options.setCapability("bstack:options", Map.of(
+				"deviceName", getConfigValue("bsDeviceName", "Google Pixel 9 Pro"),
+				"osVersion", getConfigValue("bsOsVersion", "14"),
+				"projectName", getConfigValue("bsProjectName", "Sell.do"),
+				"buildName", getConfigValue("bsBuildName", getConfigValue("buildTag", "Android Build")),
+				"sessionName", getConfigValue("bsSessionName", "Appium Test Session"),
+				"debug", getBooleanFlag("bsDebug", true),
+				"networkLogs", getBooleanFlag("bsNetworkLogs", true),
+				"appiumVersion", getConfigValue("bsAppiumVersion", "2.0.1")
+		));
+		return options;
 	}
 
 	public String getScreenshot(String fileName, WebDriver driver) {
