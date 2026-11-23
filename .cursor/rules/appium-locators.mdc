@@ -1,0 +1,38 @@
+---
+description: How to derive stable Appium locators for the Sell.do Flutter app from crm-flutter source and verify them on device
+globs: src/screens/**/*.ts,src/flows/**/*.ts,src/core/locators.ts
+alwaysApply: false
+---
+
+# Stable Locators for the Flutter App
+
+## What UiAutomator2 can see (verified on device)
+| Dart source | Android node | Locator (`src/core/locators.ts`) |
+|---|---|---|
+| `Semantics(identifier: 'x')` | `resource-id="x"` | `by.id('x')` - best, needs app support |
+| Button/`Text` child, `tooltip:`, `Semantics(label:)`, list option text | `content-desc` | `by.a11y('Save')` |
+| `TextField` hint/label (`AppFormField.text(label:)`) | EditText `hint` (`"Label *"` when required) | `by.textField('Primary email')` |
+| `AppFormField.dropdown(label:)` | clickable View, `content-desc="Label[ *]\nValue"` | `by.formField('Campaign')` |
+| `Key('lead-email')` / `ValueKey` | **nothing** | not usable with UiAutomator2 |
+
+Flutter `Key`s are invisible to UiAutomator2. Note them next to the locator (`// Key('lead-email')`) so the mapping to Dart stays traceable, and ask the app team to add `Semantics(identifier: <same key>)`; then switch to `by.id`.
+
+## Derivation workflow (do not guess)
+1. Find the screen in `.refs/crm-flutter/lib/features/<feature>/presentation/` (`npm run refs:sync` first).
+2. Read the widget tree: labels, `hintText`, `tooltip`, button `Text`, `Key`s, conditional `required:` flags and conditional rendering (`if (_catalog.x)`), and which widgets are bottom sheets/dialogs (`showModalBottomSheet`, `showDialog`).
+3. Navigate there on a device and run `npm run inspect`; confirm the attribute actually exposed (hint vs content-desc, `\n` in descs, `clickable`).
+4. Add the locator to the screen's locator file with a source note. Every locator must match exactly ONE visible element on that screen.
+
+## Files: locators, actions and reusable flows are separate
+- `src/screens/<module>/<Screen>.locators.ts` - only the locator map: `export const AddLeadLocators = { save: by.a11y("Save"), // Key('lead-save') ... } as const;`
+- `src/screens/<module>/<Screen>.screen.ts` - the screen class; imports its locators, exposes actions (`enterContact`, `selectCampaign`, `save`) and readers (`shownCampaign()`), never declares a selector.
+- `src/screens/components/<Sheet>.locators.ts` / `.screen.ts` - shared sheets/dialogs (picker, What's New).
+- `src/flows/<module>.flow.ts` - journeys reused by several tests, composed from screens.
+
+## Rules
+- Priority: `by.id` > `by.a11y` > `by.textField` / `by.formField` > `by.a11yPrefix` (static banner text only).
+- Labels whose required `*` depends on client config must use `by.textField`/`by.formField` (they accept both forms).
+- Forbidden: index (`[2]`, `.nth`, `$$()[i]`), bounds/coordinates, class-only XPath, ancestor/sibling walking, dynamic text (counts, dates, user data) as identity, resource-ids starting `android:`.
+- Generic labels (`OK`, `Close`, `Search`) are allowed only inside the sheet/dialog class that owns them, after its `trait` is visible.
+- Data-driven options (campaign, stage, user names) come from data-provider APIs at runtime, then `by.a11y(option)` inside the picker; never stored in locator files.
+- If two elements match, make the locator more specific with a static attribute (`@clickable`, the `\n` suffix) - never with an index.

@@ -1,0 +1,59 @@
+---
+description: Sell.do mobile Appium framework - architecture, layering, config, waits, reporting. Applies to every change in this repo.
+alwaysApply: true
+---
+
+# Sell.do Mobile (Flutter) - Appium Framework Rules
+
+Stack: WebdriverIO 10 + Mocha + Appium 3 (UiAutomator2) + TypeScript + Allure. App: `sell-do/crm-flutter` (package `sell.do`).
+
+## Layers (one direction only: specs -> flows -> screens/api/data -> core/config)
+
+| Layer | Path | Owns | Must not |
+|---|---|---|---|
+| Config | `automation.config.ts` (the ONLY file users edit), `src/config/*` | domain, the 4 stored credentials, device, installed `sell.do` package, run settings | contain test data or test logic; install an APK |
+| Core | `src/core/*` | `by` builders, `BaseScreen` (waits/typing/scroll), `step`/attachments/redaction, `expectFields` (soft-compare + report table), `normalize` (phone/email) | know about specific screens or business rules |
+| Locators | `src/screens/<module>/<Screen>.locators.ts` | one exported `const` map per screen/sheet, each entry with its Dart source note | contain actions, waits, logic |
+| Screens | `src/screens/<module>/<Screen>.screen.ts` | one class per screen/sheet: `trait`, actions on its own elements, readers that return what the UI shows | declare selectors inline; assert; call APIs |
+| Flows | `src/flows/<module>.flow.ts` | reusable multi-screen journeys (`loginAs`, `openAddLead`, `dismissPostLoginPrompts`) built from screens | assert; call APIs |
+| API | `src/api/<Domain>Api.ts` | typed Rails endpoints via `HttpClient`, including data providers | touch the device |
+| Data | `src/data/*` | factories (unique values) and resolvers that read client config from data-provider APIs | hold literal business values |
+| Specs | `tests/specs/<module>/<scenario>.spec.ts` | ONE test case: the readable flow + ALL its assertions | contain selectors, `driver.$`, raw HTTP |
+
+Assertions live only in the spec file. Shared code may compare and normalise, but the decision of what is expected belongs to the test.
+
+## Configuration and test data
+- Stored values are limited to: **domain, client id, full-access API key, user password** (plus non-data run settings: device, timeouts, Appium). All in `automation.config.ts`, typed by `src/config/schema.ts`, overridable by env var, read through `settings` from `src/config/environment.ts`.
+- Tests always launch the **sell.do app already installed** on the device (`app.appPackage` / `app.appActivity`). Never set `appium:app`, `APK_PATH`, or `apkPath`. The suite does not install, reinstall, or replace the app. `fullReset` stays false; clearing app data (`resetAppDataBeforeEachSpec`) is allowed.
+- Everything else is resolved at runtime from the backend with the full-access key, or created by the test (see `selldo-backend-api.mdc` -> Data providers): users by role, restricted/website API key, campaigns, sources, stages, projects, teams.
+- No literal business values in screens, flows or specs (no fixed emails, campaign names, stage names, ids). Expected UI text (messages, titles) comes from the Dart source and is noted with its file.
+- Domain routing: `v2b.sell.do` is the Next.js UI; api_key JSON goes to `https://v2.sell.do` (same staging DB as v2/v2a). `app.sell.do` is production.
+- The installed app's backend host is compiled in (`ApiEndpoints.baseUrl`). `onPrepare` and `npm run doctor` read it from the installed `sell.do` package and fail if that host and `domain` belong to different environments. Never weaken that check, and never point the run at a different APK to get around it.
+
+## Waiting (zero fixed sleeps)
+- No `driver.pause()` in screens, flows or specs. Wait on a condition: `waitForDisplayed`, `waitUntilGone`, `driver.waitUntil`, API polling (`retrieveWhenExists`).
+- The only allowed pause is a documented poll interval inside a condition loop (e.g. Home stability check in the login screen).
+- Implicit wait stays 0. Element timeout comes from `settings.test.elementTimeoutMs`.
+- Every screen has a `trait` locator; navigation methods end with `waitUntilShown()` of the next screen.
+
+## Flutter-specific interaction rules
+- `hideKeyboard()` sends ESC/BACK; Flutter treats that as dismiss for sheets/dialogs. Screens that are modal set `isModal = true` and must never hide the keyboard.
+- Scroll with `BaseScreen.scrollTo` (controlled drag, no fling, searches down then up). Never `mobile: swipeGesture`/fling to reach a field.
+- Verify typed text (`BaseScreen.type` re-reads the field); Flutter can drop input during rebuilds.
+- Snackbars disappear in seconds: capture messages while waiting for the outcome (see Add lead `save()`), not after a timeout.
+- Known interruptions are handled explicitly in the flow that triggers them (permissions prompt, What's New, update sheet). Do not add a global "tap anything that looks like OK" handler.
+
+## Reporting & failure evidence (mandatory)
+- Wrap every business action and every assertion group in `step("...")` so console and Allure read as a test case.
+- On failure `afterTest` attaches screenshot (also saved to `reports/screenshots/`), page source, logcat tail, and screen recording. Do not remove these.
+- Never log secrets: API calls go through `HttpClient`, which redacts `api_key`/`password` via `redact()`. Keys resolved at runtime are redacted the same way.
+
+## Commands
+- `npm run doctor` preflight - `npm test` - `npm run test:smoke` - `npm run allure:report` - `npm run inspect` (locators on current screen) - `npm run refs:sync` (update source repos in `.refs/`).
+
+## Definition of done for any change
+- [ ] `npm run typecheck` passes
+- [ ] The affected spec was run on a device and passed (or the failure is understood and reported with its screenshot)
+- [ ] One test case per spec file, in its module folder, named by the scenario
+- [ ] New locators are in the screen's `.locators.ts` with their Dart source noted
+- [ ] No stored values beyond the four credentials; no fixed sleeps, no index/bounds locators, no secrets in logs

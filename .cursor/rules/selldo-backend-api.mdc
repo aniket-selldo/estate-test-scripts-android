@@ -1,0 +1,102 @@
+---
+description: Discover sell.do backend APIs (sell-do/crm feature-crm-2.0-dev) and the endpoints the Flutter app calls, for test setup and validation
+globs: src/api/**/*.ts,tests/**/*.ts
+alwaysApply: false
+---
+
+# Sell.do Backend API Discovery
+
+## Sources (run `npm run refs:sync`)
+- Rails: `.refs/crm`, branch `origin/feature-crm-2.0-dev`, **no working tree** (Windows-invalid file names). Read with:
+  - `git -C .refs/crm show origin/feature-crm-2.0-dev:config/routes.rb`
+  - `git -C .refs/crm ls-tree -r --name-only origin/feature-crm-2.0-dev | rg <name>`
+  - `git -C .refs/crm grep -n "<text>" origin/feature-crm-2.0-dev -- app/controllers`
+- App: `.refs/crm-flutter/lib/core/constants/api_endpoints.dart` lists every path the app calls; `lib/features/*/data/network/*_api_service.dart` shows params.
+
+## Reading order for any feature
+1. App side: which endpoint the screen calls (`api_endpoints.dart` -> `*_api_service.dart` -> repository).
+2. `config/routes.rb` (legacy) or `config/routes/v3_routes.rb` (Api::V3) -> controller#action.
+3. Controller: `before_action`s (auth/api_key), strong params, rendered JSON keys.
+4. Model/service validations -> required vs optional; client-config flags that change them.
+5. Write/extend a typed method in `src/api/`, with the route + `Controller#action` in its doc comment.
+
+## Hosts & auth
+| Domain in config | api_key host | Notes |
+|---|---|---|
+| `v2.sell.do` | `https://v2.sell.do` | staging; v2a/v2b share this DB |
+| `v2b.sell.do` | `https://v2.sell.do` | v2b serves Next UI; legacy JSON 404s there; `/api/v3/*` needs JWT + `X-Selldo-Request` |
+| `app.sell.do` | `https://app.sell.do` | production |
+
+- **Full-access key** (`api_key` + `client_id` query): `/client/*.json` (users, leads, config) and full lead JSON from `retrieve_lead`.
+- **Restricted/website key**: never stored - `ClientConfigApi.websiteApiKey()` pages through `GET /client/api_clients.json` (15 per page, `total`) and takes the oldest client with `category: "restricted"` and `api_client_type: "website"`. Other restricted types (housing_pusher, facebook_puller, ...) return 200 from `/api/leads/create` but create nothing. Used for `POST /api/leads/create` only (body `{ api_key, sell_do: { form: { lead: {...} } } }`); with it `retrieve_lead` returns only `id`/`email`/`phone` (no names, stage, campaign), so always verify with the full-access key.
+- `/api/v3/*` (CRM 2.0): Bearer JWT from `POST /api/v3/users/login` - not usable with api keys.
+
+## Endpoints in use
+| Purpose | Route | Controller#action | Key |
+|---|---|---|---|
+| Users listing (role filter) | `GET /client/users.json?search_params[role]=&search_params[department]=&search_params[status]=true` | `Client::UsersController#index` | full |
+| Lead create (setup) | `POST /api/leads/create` | `Api::LeadsController#create` | restricted |
+| Lead retrieve | `GET /api/leads/:type/retrieve_lead?value=` (type `email`/`phone`) | `Api::LeadsController#retrieve_lead` -> `process_lead_data` | full |
+| App login | `POST /mobile/create.json` (`user[email]`, `user[password]`, `device_type`) | `MobileController#create` | UI |
+| App lead save (v3 build) | `POST /api/v3/client/leads` (Bearer JWT, nested `lead` JSON) | `Api::V3::Client::LeadsController#create` -> `V3::Leads::Create` | UI |
+| v3 sign-in | `POST /api/v3/users/login` on `settings.v3ApiBaseUrl` (staging: `https://v2a.sell.do`; v2 and v2b do not serve it) | `Api::V3::Users::SessionsController#create` | API |
+| Schedule site visit | `POST /api/v3/client/leads/:id/site_visits` | `V3::Leads::SiteVisits::Create` | UI or API |
+| Site visit status | `PATCH /api/v3/client/site_visits/:id/status` (`conducted`, `dropped` = not interested) | `V3::SiteVisits::UpdateStatus` | UI or API |
+| Reschedule site visit | `PATCH /api/v3/client/site_visits/:id` (status stays `scheduled`) | `V3::Leads::SiteVisits::Update` | UI or API |
+| Read site visits | `GET /client/leads/:id/activities.json?filters[_type]=SiteVisit` | activities feed | full key |
+| Follow-up form | `GET /api/v3/client/leads/:id/followups/new` (type, timezone, required custom fields, `options.cancellation_reasons`) | `client/leads/followups#screen` | sales JWT |
+| Schedule follow-up | `POST /api/v3/client/leads/:id/followups` (`followup_type`, `scheduled_on` UTC `yyyy-MM-dd HH:mm`, `subject`, `agenda`) | `client/leads/followups#create` | UI or API |
+| Follow-up status | `PATCH /api/v3/client/followups/:id/status` (`conducted`, or `cancelled` plus `cancellation_reason`) | `client/followup_statuses#update` | UI or API |
+| Follow-up note | `PATCH /api/v3/client/followups/:id` (`cancellation_note`) | `client/followups#update` | UI or API |
+| Read follow-ups | `GET /client/leads/:id/activities.json?filters[_type]=Followup` | activities feed | full key |
+| Schedule clashes | `GET /api/v3/client/leads/:id/scheduled_events` (`type`, `scheduled_on`, `ends_on`) | `Api::V3::Client::Leads::ScheduledEventsController#index` | sales JWT |
+| Open follow-ups / site visits | `GET /api/v3/client/lead/activities?type=Followup\|SiteVisit&segment=scheduled\|pending` | `Api::V3::Client::Lead::ActivitiesController#index` | sales JWT |
+| Read feeds | `GET /client/leads/:id/activities.json?filters[_type]=Feed` (`feed_type` `stage_change`, `reassign`, `push_to_sales`, `lead_updated`) | activities feed | full key |
+| Lead detail (access) | `GET /api/v3/client/leads/:id` (`isMine`, `actions`, `access_messages`) | `Api::V3::Client::LeadsController#show` | user JWT |
+| Change stage | `GET` then `PATCH /api/v3/client/leads/:id/stage` (`stage`, `status`) | `Api::V3::Client::LeadStagesController#new/#update` | owner JWT |
+| Add interested project | `PATCH /api/v3/client/leads/:id` `{ lead: { first_name, last_name, project_ids } }` | `V3::Leads::Update#write_projects` | owner JWT |
+| Reassign one lead | `PUT /api/v3/client/leads/:id/reassign` (`team_id` or `project_id`, `sales_id`, `reassignment_reason`) | `Api::V3::Client::Leads::ReassignmentsController#update` | owner JWT |
+| Push to sales | `POST /api/v3/client/leads/:id/push_to_sales` (`team_id` or `project_id`, `sales_id`) | `Api::V3::Client::Leads::SalesPushesController#create` -> `PushToSales.perform` | pre-sales JWT |
+| Reassign strategy | `GET`/`PATCH /api/v3/client/client_configuration` `values.reassign_lead_strategy` `team` or `project` | `Api::V3::Client::ClientConfigurationsController#show/#update` | admin JWT |
+| Push strategy | `GET /api/v3/client/pre_sales_configuration` (`push_lead_strategy`, `auto_forward`) | `Api::V3::Client::PreSalesConfigurationsController#show` | admin JWT |
+| Lookups | `GET /api/v3/client/users/lookups`, `GET /api/v3/client/leads/lookups?type=salutations` | v3 lookups | user JWT |
+| Pre-sales stages | `GET /client/configuration/data_provider_presales_stage.json` | `Client::ConfigurationController#data_provider_presales_stage` | full |
+| App lead save (develop build) | `POST /client/leads.json?user_email=&user_token=` | `Client::LeadsController#create` | UI |
+
+Match the app branch to the installed build (`.refs/crm-flutter`, see `scripts/sync-refs.ts`). Known contract gap (19 Nov 2026): `V3::Leads::Create` reads `lead.phones_attributes[]` / `lead.emails_attributes[]`, the v3 app sends `lead.primary_phone` / `lead.primary_email`, so app-created leads fail with "both email and phone of lead can't be blank".
+
+Known contract gap (19 Nov 2026): before creating or rescheduling a site visit the app calls `GET /api/v3/client/activities/scheduled_events`. That path is not in `config/routes/v3_routes.rb` and returns 404 `{ "error": "Template not found" }`, so the app never reaches the create or reschedule call. `PATCH /api/v3/client/site_visits/:id` itself returns 200. Status changes (`dropped`, `conducted`) do not call the missing route. Follow-up create catches that lookup failure and still saves. The working clash lookup is `GET /api/v3/client/leads/:id/scheduled_events` (sales JWT). The suite calls that, plus the activity lists, and marks every open follow-up and site visit in the slot conducted before a test schedules.
+
+Known contract gap (23 Nov 2026): Cancel follow-up loads reasons from `GET /api/v3/workflows/lookups?type=followup_cancellation_reasons`, which returns 403 Forbidden for the sales user. The same reasons are already on `GET /api/v3/client/leads/:id/followups/new` under `options.cancellation_reasons`. The cancel screen does not read them from there.
+
+Known contract gap (23 Nov 2026): Edit lead sends `lead.secondary_emails[]` / `lead.secondary_phones[]` (`lead_form.dart` `toFields`). `V3::Leads::Update` only reads `lead.emails_attributes[]` / `lead.phones_attributes[]`, so a secondary email or phone added in the app is not stored. Name and salutation go through `write_scalars` and are stored.
+
+Known contract gap (23 Nov 2026): Log offline call sends `{ offline_call: { direction, status, created_at, duration, notes } }` (`offline_call_form.dart` `toV3Json`). `V3::Client::Leads::OfflineCallParams` reads those keys at the top level and reads the time from `called_at`, not `created_at`. The create service then answers 422 `Direction is required. Status is required. Date and time are required.` A successful save stores missed calls as `not_answered` and answered calls as `answered`, with duration in seconds.
+
+Known contract gap (23 Nov 2026): Add conducted site visit posts `{ site_visit: { status: conducted, conducted_on, notes, scheduled_on } }` (`conducted_site_visit_form.dart` `toV3Json`) to `POST /api/v3/client/leads/:id/site_visits`. `V3::Leads::SiteVisits::Create` drops `status`, `conducted_on` and `notes` and calls `ScheduleSiteVisit`, so the visit is validated as scheduled. A conducted time in the past is then rejected with `Scheduled on cannot be in the past for a scheduled site visit.`
+
+Push to sales (`PushToSales.perform`) rejects the lead when `currently_in == sales` ("Lead is already in sales."), when `stage == incoming` ("Please contact and validate the lead before pushing it to sales."), or when it has no current project ("Please add project(s) of interest before pushing the lead to sales."). `pre_sales.push_lead_strategy` `project` sends `project_id`; anything else sends `team_id`. `auto_forward` hides the sales person and rejects a manual `sales_id`.
+
+`Lead#is_mine` is false for a sales or pre-sales user who is not the primary or secondary owner, unless team-based access or an allied user grants it. The lead detail `actions.edit` flag is that `isMine` value. Reassign strategy `team` shows a Team field; `project` shows a Project field (`client_configuration.reassign_lead_strategy`).
+
+## Data providers (full-access key, verified on v2 staging)
+Resolve client configuration here instead of storing it. Most return `[{ id, text }]`; `text` is what the app shows.
+
+| Data | Route |
+|---|---|
+| API clients / website key | `GET /client/api_clients.json?page=N` -> `{ total, results: [{ api_key, category, api_client_type, created_at }] }` |
+| Campaigns | `GET /client/campaigns/data_provider.json` |
+| Sales stages | `GET /client/configuration/data_provider_sales_stage.json` |
+| Pre-sales stages | `GET /client/configuration/data_provider_presales_stage.json` |
+| Sales / pre-sales statuses | `GET /client/configuration/data_provider_sales_status.json`, `..._presales_status.json` |
+| Sources | `GET /client/configuration/data_provider_for_source.json` |
+| Teams | `data_provider_for_teams` - route not yet confirmed (`/client/teams/data_provider_for_teams.json` is 404); find its parent resource in `config/routes.rb` before use |
+
+For any other entity: `git -C .refs/crm show origin/feature-crm-2.0-dev:config/routes.rb | rg data_provider`, read the action, confirm the response with one GET, then add a typed method to `src/api/`. If no provider exists, create the record via API in the test's Arrange step.
+
+`retrieve_lead` (full key) returns `{ exists, lead: { id, first_name, last_name, name, email, phone (national), stage_data{id,value}, last_campaign{id,name}, sales_id, ... }, sales_details{id,name,team} }`. Compare stage and campaign by id (`stage_data.id` = stage provider `id`, `last_campaign.id` = campaign provider `id`); names differ in case (`"organic"` vs provider `"Organic"`).
+
+## Rules
+- Use the API for setup and verification; use the UI for the behaviour under test.
+- GETs may retry; creates never retry (`HttpClient.post` is single-shot).
+- Never print keys: go through `HttpClient` (redacts). Keys come only from `settings.credentials`.

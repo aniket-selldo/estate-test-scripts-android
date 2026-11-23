@@ -1,0 +1,56 @@
+---
+description: Writing Appium test cases for Sell.do mobile - one test per file, naming, module folders, data from APIs, API/UI/flow assertions inside the spec
+globs: tests/**/*.ts,src/data/**/*.ts,src/flows/**/*.ts
+alwaysApply: false
+---
+
+# Test Case Rules
+
+## One test case per file, grouped by module
+- Path: `tests/specs/<module>/<scenario>.spec.ts`. Exactly one `describe` and one `it` per file.
+- Module folders follow the app's features (`lib/features/<feature>`): `auth`, `leads`, `tasks`, `followups`, `site-visits`, `bookings`, `dashboard`, `whatsapp`, `profile`, ...
+- File name: kebab-case `<actor>-<action>-<object>[-<condition>]`, readable without opening the file:
+  - `leads/sales-user-creates-lead-from-add-lead.spec.ts`
+  - `leads/api-created-lead-shows-in-lead-details.spec.ts`
+  - `leads/add-lead-without-contact-shows-validation.spec.ts`
+  - `auth/sales-user-logs-in-and-lands-on-home.spec.ts`
+- `describe`: `"<Module> | <area>"`. `it`: tags + case id + outcome sentence, e.g.
+  `"@smoke @leads LEAD-001 Sales user creates a lead and the backend stores the entered name, email and phone"`.
+- Case ids are `<MODULE>-<NNN>`, unique, never reused.
+
+## Systematic, readable flow
+Every spec reads top to bottom as a manual test case, with each block wrapped in `step()`:
+
+```
+// Header: case id, purpose, preconditions, backend map (route -> Controller#action)
+1. Allure labels       addFeature / addStory / addSeverity / addTestId
+2. Arrange (API)       resolve users, client config and keys from data providers; build or create data
+3. Act (UI)            drive screens through flows; one step per user-visible action
+4. Assert              UI -> API -> flow, each in its own step with a business name
+```
+- No helper hides the meaning of a step: a reader must see *what* is done and *what* is expected without opening other files.
+- No conditionals or loops over scenarios inside a test; a different condition is a different file.
+
+## Test data: nothing stored except the four credentials
+- Users: `UsersApi.firstActiveUser(UserRole.X)` (mobile login admits sales/pre-sales departments or admin - `MobileController#create`).
+- Client configuration (campaigns, sources, stages, projects, teams, restricted API key): resolve through data-provider APIs (`selldo-backend-api.mdc`). Pick deterministically (first enabled, or a documented filter) and log/attach the choice.
+- Unique entities: factories (`LeadFactory.build()`): run-tagged, letters-only names, Indian 10-digit mobile, `appium.` email prefix so test data is identifiable.
+- Data the UI must display is created via API first (restricted key from `api_clients`), then opened in the app.
+- Never depend on data created by another test or on test order.
+
+## Assertions (all inside the spec file)
+Use `expect` from `@wdio/globals`; compare multi-field records with `expectFields(title, actual, expected)` from `src/core` (soft-compares every field, attaches the table, fails once). A test must contain the categories that apply:
+
+1. **API-backed data validation (both directions)**
+   - Mobile -> API: after creating/editing in the app, read the record back (`retrieve_lead`, detail APIs) and compare every entered field, plus derived ones (owner = logged-in user, stage, campaign/source).
+   - API -> Mobile: create or update via API, open it in the app, and compare what the screen shows (screen *reader* methods return values; the spec asserts them).
+2. **UI-level validation**: screen reached (`trait`), titles, field values echoed after selection, enabled/disabled state, success snackbar text, validation messages for invalid/missing input (exact text from `LeadFormDraft.validate` or the Dart source).
+3. **Flow validation**: the journey ends on the expected screen (form closed, back on Home/list, detail opened), no unexpected dialog, the record appears exactly once (cross-lookups, e.g. email and phone return the same lead id), relaunch/refresh still shows it.
+4. **Industry-standard checks where relevant**: positive and negative paths, required fields and boundaries, duplicate handling, role/permission visibility, data isolation (user sees only allowed records), no secrets or raw errors shown to the user.
+
+Normalise only what the backend legitimately transforms (`src/core/normalize.ts`: phone -> national 10 digits, email case) and say so at the assertion.
+
+## Stability
+- No sleeps, no retries inside specs, `specFileRetries` stays 0 unless a flake is tracked.
+- Async backend effects: poll the API with a timeout (`retrieveWhenExists`), never wait a fixed time.
+- A product defect keeps the test failing with a clear message; do not weaken the assertion. Note it in the README "Known product defects" with the evidence.
