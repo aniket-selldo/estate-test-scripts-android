@@ -26,6 +26,8 @@ export interface ScheduleFollowupInput {
   scheduledOn: string;
   subject: string;
   agenda: string;
+  /** Required custom fields from the follow-up form, keyed by field name. */
+  custom?: Record<string, string>;
 }
 
 export interface FollowupRecord {
@@ -108,6 +110,7 @@ export class FollowupsApi {
           scheduled_on: input.scheduledOn,
           subject: input.subject,
           agenda: input.agenda,
+          ...input.custom,
         },
       },
     });

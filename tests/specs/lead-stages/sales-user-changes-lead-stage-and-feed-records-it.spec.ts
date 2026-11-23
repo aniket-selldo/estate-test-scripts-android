@@ -29,9 +29,9 @@ import { LeadDetailScreen } from "../../../src/screens/leads/LeadDetail.screen.t
  *   - conversation feed                       GET  /client/leads/:id/activities.json?filters[_type]=Feed
  *     feed_type `stage_change`, content "Lead stage was changed from {old} ({pipeline}) to {new} ({pipeline})."
  */
-describe("Leads | Change stage", () => {
+describe("Lead stages | Change stage", () => {
   it("@regression @leads LEAD-003 Sales user changes the lead stage and the feed records the new stage", async () => {
-    await addFeature("Leads");
+    await addFeature("Lead stages");
     await addStory("Sales user changes a lead stage");
     await addSeverity("critical");
     await addTestId("LEAD-003");

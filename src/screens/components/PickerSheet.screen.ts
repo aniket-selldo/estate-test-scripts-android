@@ -46,6 +46,22 @@ export class PickerSheet extends BaseScreen {
    * Types a fragment and taps the row whose label contains it.
    * Merge results are `#id First Last`, so the spec searches by the name it created.
    */
+  /**
+   * Multi-select rows stay open until Done (form_choice_sheet.dart FormChoiceDone).
+   * One tap would leave the sheet open, so this confirms with Done.
+   */
+  async selectAndConfirm(option: string): Promise<void> {
+    await this.waitUntilShown();
+    const row = $(L.choice(option));
+    if (!(await row.isDisplayed())) await this.scrollTo(L.choice(option));
+    await row.click();
+    await this.tap(L.done);
+    await driver.waitUntil(async () => (await $$(L.choiceRows).length) === 0, {
+      timeout: this.timeout,
+      timeoutMsg: `${this.name} did not close after confirming "${option}"`,
+    });
+  }
+
   async chooseMatch(fragment: string): Promise<void> {
     await this.waitUntilShown();
     await this.type(L.search, fragment);

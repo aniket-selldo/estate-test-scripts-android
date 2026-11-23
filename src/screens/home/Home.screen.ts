@@ -1,6 +1,7 @@
 import { BaseScreen } from "../../core/BaseScreen.ts";
 import { step } from "../../core/reporting.ts";
 import { LoginScreen } from "../auth/Login.screen.ts";
+import { TodaysPerformanceScreen } from "../dashboard/TodaysPerformance.screen.ts";
 import { AddLeadScreen } from "../leads/AddLead.screen.ts";
 import { LeadsListScreen } from "../leads/LeadsList.screen.ts";
 import { HomeLocators as L } from "./Home.locators.ts";
@@ -27,6 +28,14 @@ export class HomeScreen extends BaseScreen {
       await this.tap(L.logout);
       await this.tap(L.confirmLogout);
       return new LoginScreen().waitUntilShown();
+    });
+  }
+
+  async openTodaysPerformance(): Promise<TodaysPerformanceScreen> {
+    return step("Open Today's Performance", async () => {
+      await this.waitUntilShown();
+      await this.tap(L.todaysPerformance);
+      return new TodaysPerformanceScreen().waitUntilShown();
     });
   }
 

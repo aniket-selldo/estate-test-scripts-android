@@ -92,7 +92,7 @@ export class ClientConfigApi {
    * `push_lead_strategy` `project` makes Push to sales pick a project; any other value picks a team.
    * `auto_forward` assigns the sales person, so the form hides that field and rejects a manual id.
    */
-  async pushSettings(accessToken: string): Promise<{ byProject: boolean; autoForward: boolean }> {
+  async pushSettings(accessToken: string): Promise<{ byProject: boolean; autoForward: boolean; enabled: boolean }> {
     try {
       return await this.readPushSettings(accessToken);
     } catch (error) {
@@ -104,13 +104,14 @@ export class ClientConfigApi {
     }
   }
 
-  private async readPushSettings(accessToken: string): Promise<{ byProject: boolean; autoForward: boolean }> {
+  private async readPushSettings(accessToken: string): Promise<{ byProject: boolean; autoForward: boolean; enabled: boolean }> {
     const { body } = await this.v3().get<unknown>("/api/v3/client/pre_sales_configuration", {
       headers: v3Headers(accessToken),
     });
     return {
       byProject: readValue(body, "push_lead_strategy") === "project",
       autoForward: readValue(body, "auto_forward") === "true" || readValue(body, "auto_forward") === "1",
+      enabled: readValue(body, "enabled") === "true" || readValue(body, "enabled") === "1",
     };
   }
 

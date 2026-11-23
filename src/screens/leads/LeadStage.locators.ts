@@ -8,6 +8,8 @@ export const LeadStageLocators = {
   title: by.a11y("Change stage"),
   stage: by.formField("Stage"),
   status: by.formField("Status"),
+  /** lead_stage_change_sheet.dart reason dropdown label. */
+  reason: by.formField("Stage change reason"),
   save: by.clickable("Save"),
   /** V3::Leads::StageChange::NOTICE */
   savedSnackbar: by.a11yContains("Lead updated successfully"),

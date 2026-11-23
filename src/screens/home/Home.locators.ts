@@ -12,6 +12,11 @@ export const HomeLocators = {
   add: by.a11y("Add"), // global action button tooltip
   addLead: by.a11y("Add lead"), // menu item, hidden when the role cannot create leads (canCreateLead)
   /**
+   * Bottom-nav item. The label is on `_DashboardNavItem` in dashboard_screen.dart.
+   * Debug builds also set resource-id `dashboard.tab.todays-performance`.
+   */
+  todaysPerformance: by.a11y("Today's Performance"),
+  /**
    * Debug builds set resource-id `drawer.logout` and `drawer.logout.confirm`
    * (TestId in dashboard_drawer.dart). The label is "Logout".
    */

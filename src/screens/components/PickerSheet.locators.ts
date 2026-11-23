@@ -14,6 +14,8 @@ export const PickerSheetLocators = {
   search: by.textField("Search"),
   /** Every row in a choice sheet (form_choice_sheet.dart sets resource-id `form.option`). */
   choiceRows: '//*[@resource-id="form.option"]',
+  /** FormChoiceDone. The button text is "Done". */
+  done: by.clickable("Done"),
   /** The row itself, not a same-named chip on the screen behind the sheet. */
   choice: (text: string) => `//*[@resource-id="form.option" and ${label(text)}]`,
   /** A lookup row. Lookups have a Search field and no `form.option` id. */

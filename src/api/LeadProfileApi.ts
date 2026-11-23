@@ -9,6 +9,34 @@ export interface Choice {
 
 export interface StageOption extends Choice {
   statuses: string[];
+  /** Enabled drop-off reasons. Lost and unqualified require one. */
+  reasons: Choice[];
+  /** True when saving this stage asks the user to sync a channel partner. */
+  qualifiedAsCp: boolean;
+}
+
+/** One pipeline from `GET /api/v3/client/lead_bulk_stage_changes/new`. */
+export interface BulkPipeline {
+  id: string;
+  /** Picker label, "Sales" or "Pre Sales". */
+  text: string;
+  stages: BulkStageOption[];
+}
+
+/** A stage on the bulk form. `text` is the picker label; `name` is what the feed writes. */
+export interface BulkStageOption extends StageOption {
+  name: string;
+}
+
+/** A bulk target that is not the lead's current incoming stage. */
+export interface BulkStageTarget {
+  pipelineId: string;
+  pipelineLabel: string;
+  stageId: string;
+  stageLabel: string;
+  stageName: string;
+  status: string;
+  reason: string;
 }
 
 /** `GET /api/v3/client/leads/:id/stage`. */
@@ -102,10 +130,87 @@ export class LeadProfileApi {
       const label = text(item.label);
       if (!id || !label) return [];
       const statuses = Array.isArray(item.statuses) ? item.statuses.map((status) => String(status)).filter(Boolean) : [];
-      return [{ id, text: label, statuses }];
+      const reasons = (Array.isArray(item.reasons) ? item.reasons : []).flatMap((row) => {
+        const reason = objectOf(row);
+        const reasonId = text(reason.id);
+        const reasonLabel = text(reason.label) || reasonId;
+        return reasonId ? [{ id: reasonId, text: reasonLabel }] : [];
+      });
+      return [{ id, text: label, statuses, reasons, qualifiedAsCp: item.qualified_as_cp === true }];
     });
     if (stages.length === 0) throw new Error(`Stage form for lead ${leadId} returned no stages`);
     return { current: text(root.current_stage), pipeline: text(root.pipeline) || "sales", stages };
+  }
+
+  /**
+   * Lost or unqualified, with the first enabled drop-off reason.
+   * The sheet blocks Save when that list is empty ("No reasons available").
+   */
+  dropOffStage(form: StageForm, stageId: "lost" | "unqualified"): StageOption {
+    const stage = form.stages.find((item) => item.id === stageId);
+    if (!stage) throw new Error(`Stage form has no "${stageId}" stage on the ${form.pipeline} pipeline`);
+    if (stage.reasons.length === 0) {
+      throw new Error(`Stage "${stage.text}" has no enabled stage-change reason`);
+    }
+    return stage;
+  }
+
+  /**
+   * `GET /api/v3/client/lead_bulk_stage_changes/new`
+   * (Api::V3::Client::LeadBulkStageChangesController#new).
+   */
+  async bulkStageForm(): Promise<BulkPipeline[]> {
+    const { body } = await this.v3.get<unknown>("/api/v3/client/lead_bulk_stage_changes/new", { headers: this.auth() });
+    const rows = Array.isArray(objectOf(body).pipelines) ? (objectOf(body).pipelines as unknown[]) : [];
+    const pipelines = rows.flatMap((row) => {
+      const item = objectOf(row);
+      const id = text(item.id);
+      const label = text(item.label);
+      if (!id || !label) return [];
+      const suffix = id === "pre_sales" ? "Pre-Sales" : "Sales";
+      const marker = ` (${suffix})`;
+      const stages = (Array.isArray(item.stages) ? item.stages : []).flatMap((stageRow) => {
+        const stage = objectOf(stageRow);
+        const stageId = text(stage.stage);
+        const stageLabel = text(stage.label);
+        if (!stageId || !stageLabel || stageId === "booked") return [];
+        const statuses = Array.isArray(stage.statuses) ? stage.statuses.map((status) => String(status)).filter(Boolean) : [];
+        const reasons = (Array.isArray(stage.reasons) ? stage.reasons : []).flatMap((reasonRow) => {
+          const reason = objectOf(reasonRow);
+          const reasonId = text(reason.id);
+          const reasonLabel = text(reason.label) || reasonId;
+          return reasonId ? [{ id: reasonId, text: reasonLabel }] : [];
+        });
+        const name = stageLabel.endsWith(marker) ? stageLabel.slice(0, -marker.length) : stageLabel;
+        return [{ id: stageId, text: stageLabel, name, statuses, reasons, qualifiedAsCp: stage.qualified_as_cp === true }];
+      });
+      return [{ id, text: label, stages }];
+    });
+    if (pipelines.length === 0) throw new Error("Bulk stage form returned no pipelines");
+    return pipelines;
+  }
+
+  /**
+   * A stage the bulk sheet can apply to incoming leads.
+   * BulkModifyLeadsStageWorker skips a lead whose stage does not change, so the
+   * target is never `incoming`. Lost and unqualified need a reason; a stage with
+   * no status list is preferred.
+   */
+  bulkTarget(pipelines: BulkPipeline[], pipelineId: string): BulkStageTarget {
+    const pipeline = pipelines.find((item) => item.id === pipelineId);
+    if (!pipeline) throw new Error(`Bulk stage form has no "${pipelineId}" pipeline`);
+    const open = pipeline.stages.filter((item) => item.id !== "incoming" && !item.qualifiedAsCp && item.name.trim().length > 2);
+    const stage = open.find((item) => item.statuses.length === 0 && item.reasons.length === 0) ?? open[0];
+    if (!stage) throw new Error(`No bulk stage on ${pipeline.text} besides incoming`);
+    return {
+      pipelineId: pipeline.id,
+      pipelineLabel: pipeline.text,
+      stageId: stage.id,
+      stageLabel: stage.text,
+      stageName: stage.name,
+      status: stage.statuses[0] ?? "",
+      reason: stage.reasons[0]?.text ?? "",
+    };
   }
 
   /**
@@ -120,6 +225,22 @@ export class LeadProfileApi {
     const stage = open.find((item) => item.statuses.length === 0) ?? open[0];
     if (!stage) throw new Error(`No open stage besides ${[...blocked].join(", ")}`);
     return stage;
+  }
+
+  /**
+   * `POST /api/v3/client/leads/:id/push_to_sales`
+   * (Api::V3::Client::Leads::SalesPushesController#create -> PushToSales.perform).
+   * Omit `salesId` when pre-sales is set to auto-forward; the router picks the sales user.
+   */
+  async pushToSales(leadId: string, input: { salesId?: string; teamId?: string; projectId?: string }): Promise<void> {
+    await this.v3.post(`/api/v3/client/leads/${leadId}/push_to_sales`, {
+      headers: this.auth(),
+      json: {
+        ...(input.salesId ? { sales_id: input.salesId } : {}),
+        ...(input.teamId ? { team_id: input.teamId } : {}),
+        ...(input.projectId ? { project_id: input.projectId } : {}),
+      },
+    });
   }
 
   /** `PATCH /api/v3/client/leads/:id/stage` (Api::V3::Client::LeadStagesController#update). */
