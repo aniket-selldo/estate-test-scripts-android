@@ -138,7 +138,33 @@ export class LeadDetailScreen extends BaseScreen {
     });
   }
 
-  /** The conversation feed tab that lists this lead's follow-ups. The tab bar scrolls sideways. */
+  /** The conversation tab that lists this lead's emails. The card title is the subject. */
+  async showEmails(): Promise<void> {
+    await this.openTab("Emails", L.emails);
+  }
+
+  /**
+   * Taps More. Returns whether the Email row is on the sheet.
+   * A user with no more-actions at all gets the snackbar and no sheet
+   * (open_lead_more.dart), which also means Email was not offered.
+   */
+  async emailActionOffered(): Promise<boolean> {
+    return step("Open more lead actions and look for Email", async () => {
+      await this.tap(L.more);
+      const sheet = new LeadMoreSheet();
+      const denied = $(by.a11yContains("You are not allowed to perform this action"));
+      await driver.waitUntil(async () => (await sheet.isShown()) || (await denied.isDisplayed()), {
+        timeout: this.timeout,
+        timeoutMsg: "More actions did not open and no access message was shown",
+      });
+      if (!(await sheet.isShown())) return false;
+      const offered = await sheet.hasEmail();
+      await driver.back();
+      await sheet.waitUntilGone();
+      return offered;
+    });
+  }
+
   async showFollowUps(): Promise<void> {
     await step("Open the Follow-ups tab on the conversation feed", async () => {
       await this.revealTab(L.followUps);

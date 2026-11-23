@@ -5,11 +5,16 @@ import type { Options } from "@wdio/types";
 import { checkApkBackend } from "./src/config/apkInspector.ts";
 import { buildCapabilities, resolveDeviceSerial } from "./src/config/capabilities.ts";
 import { PROJECT_ROOT, settings } from "./src/config/environment.ts";
+import { toSpecArg, writeLastRun } from "./src/core/lastRun.ts";
 import { attachPng, attachText, attachVideo, log } from "./src/core/reporting.ts";
 
 const REPORTS = path.join(PROJECT_ROOT, "reports");
 const { test } = settings;
 const { appium } = test;
+
+/** Specs whose worker exited failed and will not be retried. Launcher process only. */
+const failedSpecs = new Set<string>();
+let workersFinished = 0;
 
 function safeName(title: string): string {
   return title.replace(/[^a-z0-9]+/gi, "_").slice(0, 80);
@@ -78,6 +83,33 @@ export const config: Options.Testrunner & { capabilities: WebdriverIO.Capabiliti
     const env = settings.domain === "app.sell.do" ? "production" : "staging";
     const device = serial ? `${settings.device.type} ${serial}` : `${settings.device.type} ${settings.device.avdName}`;
     log.info(`Automation start: env=${env} domain=${settings.domain} device=${device}`);
+  },
+
+  /**
+   * `retries` is how many spec-file retries are still left. A failing worker with
+   * retries left is queued again, so only a non-zero exit with none left is final.
+   * A later passing attempt drops the spec from the failed set.
+   */
+  onWorkerEnd(_cid, exitCode, specs, retries) {
+    workersFinished += 1;
+    const files = specs.map(toSpecArg);
+    if (exitCode !== 0 && retries <= 0) {
+      for (const file of files) failedSpecs.add(file);
+    } else if (exitCode === 0) {
+      for (const file of files) failedSpecs.delete(file);
+    }
+  },
+
+  onComplete() {
+    if (workersFinished === 0) return;
+    const failed = [...failedSpecs].sort();
+    writeLastRun(failed);
+    if (failed.length === 0) {
+      log.info("All specs passed. reports/last-run.json has no failures to rerun.");
+      return;
+    }
+    log.info(`Failed specs saved to reports/last-run.json (${failed.length}). Rerun with: npm run test:failed`);
+    for (const file of failed) log.info(`  ${file}`);
   },
 
   async before() {

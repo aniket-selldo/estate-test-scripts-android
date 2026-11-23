@@ -97,6 +97,7 @@ describe("Leads | Add lead", () => {
 ```
 npm run typecheck
 npm run test:spec -- ./tests/specs/<module>/<scenario>.spec.ts
+npm run test:failed    # specs that failed in the last completed run
 npm run allure:report
 ```
 A test is done only after it passes on a device. Run it twice to check stability.

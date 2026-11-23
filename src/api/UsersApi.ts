@@ -88,6 +88,15 @@ export class UsersApi {
     return users[0];
   }
 
+  /** The user id from `retrieve_lead` `sales_details.id`, among users who can sign in on mobile. */
+  async userById(id: string): Promise<SellDoUser> {
+    for (const filter of [UserRole.Sales, UserRole.PreSales, UserRole.Admin]) {
+      const found = (await this.listAllActiveUsers(filter)).find((user) => user._id === id);
+      if (found) return found;
+    }
+    throw new Error(`No active sales, pre-sales or admin user with id ${id}`);
+  }
+
   /** The next active user of this role, skipping `exceptId` (the lead's current owner). */
   async anotherActiveUser(filter: UserRoleFilter, exceptId: string): Promise<SellDoUser> {
     const users = await this.listActiveUsers(filter);

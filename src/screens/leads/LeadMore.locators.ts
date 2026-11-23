@@ -6,6 +6,8 @@ import { by } from "../../core/locators.ts";
  */
 export const LeadMoreLocators = {
   title: by.a11y("More actions"),
+  /** LeadMoreAction.email. The row is omitted when `actions.email` is false. */
+  email: by.id("lead.more.email"),
   editLead: by.id("lead.more.edit"),
   reassignLead: by.id("lead.more.reassign"),
   push: by.id("lead.more.push"),

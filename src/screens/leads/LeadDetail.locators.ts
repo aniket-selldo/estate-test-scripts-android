@@ -33,6 +33,8 @@ export const LeadDetailLocators = {
   mergeLeads: detailTab("Merge leads"),
   siteVisits: detailTab("Site visits"),
   followUps: detailTab("Follow-ups"),
+  /** Conversation tab that lists emails (lead_activity.dart). Hidden when `email_feed` is false. */
+  emails: detailTab("Emails"),
   /** Action bar Note button. Debug builds set resource-id `lead.action.note`. */
   note: by.id("lead.action.note"),
   /**

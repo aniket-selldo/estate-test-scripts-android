@@ -49,7 +49,7 @@ Assertions live only in the spec file. Shared code may compare and normalise, bu
 - Never log secrets: API calls go through `HttpClient`, which redacts `api_key`/`password` via `redact()`. Keys resolved at runtime are redacted the same way.
 
 ## Commands
-- `npm run doctor` preflight - `npm test` - `npm run test:smoke` - `npm run allure:report` - `npm run inspect` (locators on current screen) - `npm run refs:sync` (update source repos in `.refs/`).
+- `npm run doctor` preflight - `npm test` - `npm run test:smoke` - `npm run test:failed` (rerun specs that failed in the last run) - `npm run allure:report` - `npm run inspect` (locators on current screen) - `npm run refs:sync` (update source repos in `.refs/`).
 
 ## Definition of done for any change
 - [ ] `npm run typecheck` passes

@@ -2,6 +2,7 @@ import { $ } from "@wdio/globals";
 import { BaseScreen } from "../../core/BaseScreen.ts";
 import { step } from "../../core/reporting.ts";
 import { OfflineCallScreen } from "../calls/OfflineCall.screen.ts";
+import { SendEmailScreen } from "../emails/SendEmail.screen.ts";
 import { ConductedSiteVisitScreen } from "../site-visits/ConductedSiteVisit.screen.ts";
 import { DeleteLeadSheet } from "./DeleteLead.screen.ts";
 import { EditLeadScreen } from "./EditLead.screen.ts";
@@ -14,6 +15,18 @@ export class LeadMoreSheet extends BaseScreen {
   protected readonly name = "Lead more actions";
   protected readonly trait = L.title;
   protected readonly isModal = true;
+
+  async sendEmail(): Promise<SendEmailScreen> {
+    return step("Choose Email", async () => {
+      await this.tap(L.email);
+      return new SendEmailScreen().waitUntilShown();
+    });
+  }
+
+  /** The Email row is present only when this user may email the lead. */
+  async hasEmail(): Promise<boolean> {
+    return $(L.email).isDisplayed();
+  }
 
   async editLead(): Promise<EditLeadScreen> {
     return step("Choose Edit lead", async () => {

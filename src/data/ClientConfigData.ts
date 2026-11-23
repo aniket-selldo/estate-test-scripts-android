@@ -9,6 +9,16 @@ const CAMPAIGNS_NEEDING_EXTRA_DATA = /walk-?in|channel partner/i;
 
 /** Deterministic picks from the client's configuration, attached to the report. */
 export const ClientConfigData = {
+  /**
+   * First campaign mailbox in alphabetical order.
+   * Incoming email uses this address as `recipient`, the same way Add lead uses a campaign id.
+   */
+  async campaignMailbox(): Promise<ProviderOption> {
+    const [pick] = await new ClientConfigApi().campaignMailboxes();
+    attachJson("Picked campaign mailbox", pick);
+    return pick;
+  },
+
   /** First campaign in provider order that the form can save with contact data only. */
   async campaignForAddLead(): Promise<ProviderOption> {
     const options = await new ClientConfigApi().campaigns();

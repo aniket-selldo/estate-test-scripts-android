@@ -43,12 +43,15 @@ Tests always launch the sell.do app already installed on the phone or emulator. 
 npm test                   # all specs
 npm run test:smoke         # tests tagged @smoke
 npm run test:spec -- ./tests/specs/leads/createLeadAsSales.spec.ts
+npm run test:failed        # rerun only the specs that failed in the last run
 npm run allure:report      # build and open the HTML report
 npm run inspect            # dump the current screen with suggested locators
 npm run refs:sync          # update the app and backend source used for mapping
 ```
 
 The Appium server is started by the WebdriverIO service (`test.appium.startServer`); do not run another one on the same port.
+
+A run that starts at least one spec writes `reports/last-run.json` with the spec files that failed and were not retried. `npm run test:failed` launches only those files. It uses the same device and the sell.do app already installed on it. A run that stops before any spec starts (for example the installed-app host check) leaves the previous file in place.
 
 ## Architecture
 

@@ -1,7 +1,5 @@
 node_modules/
 reports/
-apps/*.apk
-apps/*.apks
 .probe/
 .refs/
 .env

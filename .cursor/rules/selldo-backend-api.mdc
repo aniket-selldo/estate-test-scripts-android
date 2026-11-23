@@ -36,6 +36,9 @@ alwaysApply: false
 |---|---|---|---|
 | Users listing (role filter) | `GET /client/users.json?search_params[role]=&search_params[department]=&search_params[status]=true` | `Client::UsersController#index` | full |
 | Lead create (setup) | `POST /api/leads/create` | `Api::LeadsController#create` | restricted |
+| Incoming email creates a lead | `POST /client/:client_id/mails/mailgun/incoming_mail` (form: `recipient` campaign mailbox, `sender`, `from` `Name <email>`, `To`, `subject`, `body-html`, `body-plain`, `Date`, `Message-Id`, `timestamp`, `token`, `attachment-count`) | `Client::Mails::MailgunController#incoming_mail` -> `IncomingMailLogObserver` | none (Mailgun). Answers `ok` even when the save is skipped; confirm with `retrieve_lead` |
+| Send email | `POST /api/v3/client/leads/:id/emails` (`email.subject`, `email.html_content`, `email.toaddr` email-address ids, `email.email_template_type`) | `Api::V3::Client::Leads::EmailsController#create` -> `V3::Leads::Emails::Create` | owner JWT |
+| Read emails | `GET /client/leads/:id/activities.json?filters[_type]=Email` | activities feed | full key |
 | Lead retrieve | `GET /api/leads/:type/retrieve_lead?value=` (type `email`/`phone`) | `Api::LeadsController#retrieve_lead` -> `process_lead_data` | full |
 | App login | `POST /mobile/create.json` (`user[email]`, `user[password]`, `device_type`) | `MobileController#create` | UI |
 | App lead save (v3 build) | `POST /api/v3/client/leads` (Bearer JWT, nested `lead` JSON) | `Api::V3::Client::LeadsController#create` -> `V3::Leads::Create` | UI |
@@ -86,6 +89,7 @@ Resolve client configuration here instead of storing it. Most return `[{ id, tex
 |---|---|
 | API clients / website key | `GET /client/api_clients.json?page=N` -> `{ total, results: [{ api_key, category, api_client_type, created_at }] }` |
 | Campaigns | `GET /client/campaigns/data_provider.json` |
+| Campaign email mailboxes | `GET /client/campaigns/data_provider_medium_values.json` (rows whose `text` contains `@`; plus-aliases excluded). `id` is the mailbox used as incoming-mail `recipient` |
 | Sales stages | `GET /client/configuration/data_provider_sales_stage.json` |
 | Pre-sales stages | `GET /client/configuration/data_provider_presales_stage.json` |
 | Sales / pre-sales statuses | `GET /client/configuration/data_provider_sales_status.json`, `..._presales_status.json` |

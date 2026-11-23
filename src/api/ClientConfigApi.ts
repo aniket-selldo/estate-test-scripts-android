@@ -33,6 +33,20 @@ export class ClientConfigApi {
     return this.provider("/client/campaigns/data_provider.json");
   }
 
+  /**
+   * `GET /client/campaigns/data_provider_medium_values.json`
+   * (Client::CampaignsController#data_provider_medium_values).
+   * Email rows are routing rules with `entity_type` Email. `id` and `text` are the mailbox
+   * (`altimate@client-domain`). Plus-aliases are generated test addresses and are left out.
+   * That mailbox is the `recipient` for `POST /client/:client_id/mails/mailgun/incoming_mail`.
+   */
+  async campaignMailboxes(): Promise<ProviderOption[]> {
+    const rows = await this.provider("/client/campaigns/data_provider_medium_values.json");
+    const mailboxes = rows.filter((row) => row.id.includes("@") && row.text.includes("@") && !row.text.includes("+"));
+    if (mailboxes.length === 0) throw new Error("Campaign medium values include no email address");
+    return [...mailboxes].sort((a, b) => a.text.localeCompare(b.text));
+  }
+
   /** `GET /client/projects/data_provider.json` (Client::ProjectsController#data_provider). */
   async projects(): Promise<ProviderOption[]> {
     return this.provider("/client/projects/data_provider.json");

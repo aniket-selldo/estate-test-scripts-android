@@ -20,6 +20,8 @@ export interface HttpResponse<T> {
 interface RequestOptions {
   query?: QueryParams;
   json?: unknown;
+  /** `application/x-www-form-urlencoded` body. Mailgun incoming mail answers plain text, not JSON. */
+  form?: Record<string, string>;
   headers?: Record<string, string>;
   /** Statuses that count as success. Default: 2xx. */
   expectStatus?: number[];
@@ -61,11 +63,12 @@ export class HttpClient {
         response = await fetch(url, {
           method,
           headers: {
-            Accept: "application/json",
+            Accept: "application/json, text/plain",
             ...options.headers,
             ...(options.json ? { "Content-Type": "application/json" } : {}),
+            ...(options.form ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
           },
-          body: options.json ? JSON.stringify(options.json) : undefined,
+          body: options.json ? JSON.stringify(options.json) : options.form ? new URLSearchParams(options.form).toString() : undefined,
           signal: AbortSignal.timeout(options.timeoutMs ?? 60_000),
         });
       } catch (error) {
@@ -87,14 +90,21 @@ export class HttpClient {
         throw new ApiError(`${label} -> ${response.status}: ${redact(text.slice(0, 500))}`, response.status, text);
       }
       let body: T;
+      let attached: unknown;
       try {
         body = JSON.parse(text) as T;
+        attached = JSON.parse(redact(text));
       } catch {
-        throw new ApiError(`${label} -> ${response.status} returned non-JSON: ${text.slice(0, 200)}`, response.status, text);
+        if (!options.form) {
+          throw new ApiError(`${label} -> ${response.status} returned non-JSON: ${text.slice(0, 200)}`, response.status, text);
+        }
+        body = text as T;
+        attached = redact(text.slice(0, 500));
       }
+      const request = options.form ?? options.json;
       attachJson(`API ${label} -> ${response.status}`, {
-        request: options.json ? JSON.parse(redact(JSON.stringify(options.json))) : undefined,
-        response: JSON.parse(redact(text)),
+        request: request ? JSON.parse(redact(JSON.stringify(request))) : undefined,
+        response: attached,
       });
       return { status: response.status, body };
     }

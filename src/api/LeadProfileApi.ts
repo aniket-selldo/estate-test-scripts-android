@@ -26,6 +26,10 @@ export interface LeadAccess {
   pushToSales: boolean;
   reassign: boolean;
   note: boolean;
+  /** `actions.email`. True only when the user owns the lead, it has an email, and email is enabled. */
+  email: boolean;
+  /** `actions.email_feed`. The Emails tab stays available when email is enabled, even for another user. */
+  emailFeed: boolean;
   merge: boolean;
   delete: boolean;
   offlineCall: boolean;
@@ -75,6 +79,8 @@ export class LeadProfileApi {
       pushToSales: actions.push_to_sales === true,
       reassign: actions.reassign === true,
       note: actions.note === true,
+      email: actions.email === true,
+      emailFeed: actions.email_feed === true,
       merge: actions.merge === true,
       delete: actions.delete === true,
       offlineCall: actions.offline_call === true,
