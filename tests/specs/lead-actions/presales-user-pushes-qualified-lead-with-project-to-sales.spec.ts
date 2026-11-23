@@ -32,9 +32,9 @@ import { findLead } from "../../../src/flows/leads.flow.ts";
  *   - currently_in is sales and the owner changed    GET /api/leads/email/retrieve_lead
  *   - feed_type push_to_sales                         GET /client/leads/:id/activities.json
  */
-describe("Leads | Push to sales", () => {
+describe("Lead actions | Push to sales", () => {
   it("@regression @leads LEAD-006 Pre-sales user pushes a qualified lead with a project into sales", async () => {
-    await addFeature("Leads");
+    await addFeature("Lead actions");
     await addStory("Push a qualified lead to sales");
     await addSeverity("critical");
     await addTestId("LEAD-006");

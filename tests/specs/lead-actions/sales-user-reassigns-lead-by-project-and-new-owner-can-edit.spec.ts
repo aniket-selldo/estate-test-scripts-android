@@ -35,9 +35,9 @@ import { LeadDetailScreen } from "../../../src/screens/leads/LeadDetail.screen.t
  *   - new owner                                      GET /api/v3/client/leads/:id  isMine true, actions.edit true
  *   - Edit lead opens for the new owner
  */
-describe("Leads | Reassign by project", () => {
+describe("Lead actions | Reassign by project", () => {
   it("@regression @leads LEAD-005 Sales user reassigns a lead by project and the new owner can edit it", async () => {
-    await addFeature("Leads");
+    await addFeature("Lead actions");
     await addStory("Reassign a lead by project");
     await addSeverity("critical");
     await addTestId("LEAD-005");

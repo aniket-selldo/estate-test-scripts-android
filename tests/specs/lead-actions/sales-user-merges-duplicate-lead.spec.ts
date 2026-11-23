@@ -23,9 +23,9 @@ import { LeadDetailScreen } from "../../../src/screens/leads/LeadDetail.screen.t
  * The merge keeps the open lead and records a lead_updated feed when the
  * duplicate email is added as a secondary email.
  */
-describe("Leads | Merge lead", () => {
+describe("Lead actions | Merge lead", () => {
   it("@regression @leads LEAD-010 Sales user merges a duplicate lead and the feed names that lead", async () => {
-    await addFeature("Leads");
+    await addFeature("Lead actions");
     await addStory("Merge a duplicate into the open lead");
     await addSeverity("critical");
     await addTestId("LEAD-010");

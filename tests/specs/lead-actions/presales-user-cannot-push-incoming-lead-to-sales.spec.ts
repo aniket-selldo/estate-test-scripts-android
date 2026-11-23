@@ -28,9 +28,9 @@ const INCOMING_BLOCK =
  * Under test: Push to sales stays on the form and shows the incoming-stage error.
  * Verification: currently_in, owner and stage are unchanged.
  */
-describe("Leads | Push to sales", () => {
+describe("Lead actions | Push to sales", () => {
   it("@regression @leads LEAD-007 Pre-sales user cannot push an incoming lead even when a project is added", async () => {
-    await addFeature("Leads");
+    await addFeature("Lead actions");
     await addStory("Push to sales rejects an incoming lead");
     await addSeverity("critical");
     await addTestId("LEAD-007");

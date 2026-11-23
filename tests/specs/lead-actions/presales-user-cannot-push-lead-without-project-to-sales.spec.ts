@@ -26,9 +26,9 @@ const PROJECT_BLOCK = "Please add project(s) of interest before pushing the lead
  * Under test: Push to sales stays on the form and shows the missing-project error.
  * Verification: the lead gains no project, stays out of sales, and keeps its owner.
  */
-describe("Leads | Push to sales", () => {
+describe("Lead actions | Push to sales", () => {
   it("@regression @leads LEAD-008 Pre-sales user cannot push a lead that has no project", async () => {
-    await addFeature("Leads");
+    await addFeature("Lead actions");
     await addStory("Push to sales rejects a lead with no project");
     await addSeverity("critical");
     await addTestId("LEAD-008");
