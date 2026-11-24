@@ -26,6 +26,8 @@ interface RequestOptions {
   /** Statuses that count as success. Default: 2xx. */
   expectStatus?: number[];
   timeoutMs?: number;
+  /** Return the body as text when it is not JSON. The lead email page is HTML. */
+  asText?: boolean;
 }
 
 const RETRYABLE_STATUS = new Set([502, 503, 504]);
@@ -95,7 +97,7 @@ export class HttpClient {
         body = JSON.parse(text) as T;
         attached = JSON.parse(redact(text));
       } catch {
-        if (!options.form) {
+        if (!options.form && !options.asText) {
           throw new ApiError(`${label} -> ${response.status} returned non-JSON: ${text.slice(0, 200)}`, response.status, text);
         }
         body = text as T;

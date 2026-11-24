@@ -11,7 +11,7 @@ function elapsed(): string {
   return `${((Date.now() - startedAt) / 1000).toFixed(1)}s`;
 }
 
-/** A named business step in the Allure report. The console only prints the test in progress. */
+/** A named business step in the Allure report. The console list is printed by PlaywrightReporter. */
 export function step<T>(name: string, body: () => Promise<T>): Promise<T> {
   return allureStep(name, () => body());
 }

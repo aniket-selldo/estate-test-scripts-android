@@ -1,12 +1,15 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { globSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { driver } from "@wdio/globals";
 import type { Options } from "@wdio/types";
 import { checkApkBackend } from "./src/config/apkInspector.ts";
 import { buildCapabilities, resolveDeviceSerial } from "./src/config/capabilities.ts";
 import { PROJECT_ROOT, settings } from "./src/config/environment.ts";
+import { hideWdioStatusLines, logRunStart, logRunSummary, readConsoleRun, resetConsoleRun } from "./src/core/consoleRun.ts";
 import { toSpecArg, writeLastRun } from "./src/core/lastRun.ts";
-import { attachPng, attachText, attachVideo, log } from "./src/core/reporting.ts";
+import PlaywrightReporter from "./src/core/playwrightReporter.ts";
+import { attachPng, attachText, attachVideo } from "./src/core/reporting.ts";
 
 const REPORTS = path.join(PROJECT_ROOT, "reports");
 const { test } = settings;
@@ -18,6 +21,28 @@ let workersFinished = 0;
 
 function safeName(title: string): string {
   return title.replace(/[^a-z0-9]+/gi, "_").slice(0, 80);
+}
+
+function specFileCount(patterns: readonly (string | string[])[]): number {
+  const files = new Set<string>();
+  for (const entry of patterns.flat()) {
+    if (typeof entry !== "string" || entry.length === 0) continue;
+    // `--spec` rewrites the list to file:// URLs. Those are files, not globs.
+    const pattern = entry.startsWith("file://") ? fileURLToPath(entry) : entry;
+    if (!/[*?[]/.test(pattern)) {
+      files.add(pattern);
+      continue;
+    }
+    const normalized = pattern.replace(/^\.\//, "").replace(/\\/g, "/");
+    for (const file of globSync(normalized, { cwd: PROJECT_ROOT })) files.add(file);
+  }
+  return files.size;
+}
+
+function grepText(grep: unknown): string {
+  if (grep instanceof RegExp) return grep.source;
+  if (typeof grep === "string" && grep.trim()) return grep.trim();
+  return "";
 }
 
 export const config: Options.Testrunner & { capabilities: WebdriverIO.Capabilities[] } = {
@@ -51,7 +76,7 @@ export const config: Options.Testrunner & { capabilities: WebdriverIO.Capabiliti
   },
 
   reporters: [
-    "spec",
+    [PlaywrightReporter, {}],
     [
       "allure",
       {
@@ -70,7 +95,8 @@ export const config: Options.Testrunner & { capabilities: WebdriverIO.Capabiliti
   ],
 
   /** Fail fast on configuration mistakes before any session is created. */
-  onPrepare() {
+  onPrepare(config) {
+    hideWdioStatusLines();
     mkdirSync(path.join(REPORTS, "screenshots"), { recursive: true });
     const serial = resolveDeviceSerial();
     const apk = checkApkBackend(serial);
@@ -80,9 +106,9 @@ export const config: Options.Testrunner & { capabilities: WebdriverIO.Capabiliti
           `(expected one of ${settings.appBackendHosts.join(", ")}). Install a matching sell.do build or change domain in automation.config.ts.`,
       );
     }
-    const env = settings.domain === "app.sell.do" ? "production" : "staging";
-    const device = serial ? `${settings.device.type} ${serial}` : `${settings.device.type} ${settings.device.avdName}`;
-    log.info(`Automation start: env=${env} domain=${settings.domain} device=${device}`);
+    const tests = specFileCount(config.specs ?? test.specs);
+    resetConsoleRun(tests);
+    logRunStart(tests, grepText(config.mochaOpts?.grep));
   },
 
   /**
@@ -104,20 +130,15 @@ export const config: Options.Testrunner & { capabilities: WebdriverIO.Capabiliti
     if (workersFinished === 0) return;
     const failed = [...failedSpecs].sort();
     writeLastRun(failed);
-    if (failed.length === 0) {
-      log.info("All specs passed. reports/last-run.json has no failures to rerun.");
-      return;
-    }
-    log.info(`Failed specs saved to reports/last-run.json (${failed.length}). Rerun with: npm run test:failed`);
-    for (const file of failed) log.info(`  ${file}`);
+    const run = readConsoleRun();
+    logRunSummary(run.entries, run.elapsedMs);
   },
 
   async before() {
     await driver.setTimeout({ implicit: 0 });
   },
 
-  async beforeTest(testCase: { title: string }) {
-    log.info(`Test: ${testCase.title}`);
+  async beforeTest() {
     if (test.recordVideoOnFailure) {
       await driver.startRecordingScreen({ timeLimit: 180, videoSize: "720x1280", forceRestart: true }).catch(() => undefined);
     }

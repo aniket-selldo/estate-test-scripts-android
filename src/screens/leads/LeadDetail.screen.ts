@@ -3,6 +3,7 @@ import { BaseScreen } from "../../core/BaseScreen.ts";
 import { by } from "../../core/locators.ts";
 import { step } from "../../core/reporting.ts";
 import { OfflineCallScreen } from "../calls/OfflineCall.screen.ts";
+import { ReplyEmailScreen } from "../emails/ReplyEmail.screen.ts";
 import { CancelFollowupScreen } from "../follow-ups/CancelFollowup.screen.ts";
 import { ScheduleFollowupScreen } from "../follow-ups/ScheduleFollowup.screen.ts";
 import { ConductedSiteVisitScreen } from "../site-visits/ConductedSiteVisit.screen.ts";
@@ -141,6 +142,27 @@ export class LeadDetailScreen extends BaseScreen {
   /** The conversation tab that lists this lead's emails. The card title is the subject. */
   async showEmails(): Promise<void> {
     await this.openTab("Emails", L.emails);
+  }
+
+  /** Reply and Reply all are pinned on an email the signed-in user owns. */
+  async emailActionVisible(label: "Reply" | "Reply all"): Promise<boolean> {
+    try {
+      await this.scrollTo(L.cardAction(label));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Opens Reply or Reply all on the card whose title contains the subject. */
+  async openEmailReply(subject: string, replyAll: boolean): Promise<ReplyEmailScreen> {
+    const label = replyAll ? "Reply all" : "Reply";
+    return step(`Choose ${label} on "${subject}"`, async () => {
+      await this.waitForText(subject);
+      await this.scrollTo(L.cardAction(label));
+      await this.tap(L.cardAction(label));
+      return new ReplyEmailScreen().waitUntilShown();
+    });
   }
 
   /**

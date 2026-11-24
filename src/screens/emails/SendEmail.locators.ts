@@ -12,6 +12,8 @@ export const SendEmailLocators = {
   subject: by.textField("Subject"),
   /** AppFormField.dropdown label "Email type". The default value is "General email". */
   emailType: by.formField("Email type"),
+  /** AppFormField.dropdown label "Template". Choosing one fills the subject and body. */
+  template: by.formField("Template"),
   /** AppFormField.dropdown label "To". The lead's primary address is already selected. */
   to: by.formField("To"),
   /** RichNoteField placeholder "Body". Debug builds set resource-id `form.note`. */
